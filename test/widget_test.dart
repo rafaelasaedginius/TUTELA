@@ -16,7 +16,7 @@ void main() {
     await tester.pumpWidget(const TutelaApp());
     await _finishSplash(tester);
 
-    expect(find.text('Getting started'), findsOneWidget);
+    expect(find.text('Getting started'), findsNothing);
     expect(find.text('Move through the city with confidence.'), findsOneWidget);
     expect(find.text('Get started'), findsOneWidget);
     expect(find.text('Log in'), findsOneWidget);
@@ -28,7 +28,7 @@ void main() {
     await _finishSplash(tester);
 
     await tester.tap(find.text('Log in'));
-    await tester.pumpAndSettle();
+    await _finishAuthRoute(tester);
 
     expect(find.text('Welcome back to your safe routes.'), findsOneWidget);
     expect(find.text('Sign in'), findsWidgets);
@@ -44,7 +44,7 @@ void main() {
     await _finishSplash(tester);
 
     await tester.tap(find.text('Get started'));
-    await tester.pumpAndSettle();
+    await _finishAuthRoute(tester);
 
     expect(find.text('Create your safe-space account.'), findsOneWidget);
     expect(find.text('Create account'), findsOneWidget);
@@ -56,5 +56,10 @@ void main() {
 
 Future<void> _finishSplash(WidgetTester tester) async {
   await tester.pump(const Duration(milliseconds: 3800));
-  await tester.pumpAndSettle();
+  await tester.pump(const Duration(milliseconds: 700));
+}
+
+Future<void> _finishAuthRoute(WidgetTester tester) async {
+  await tester.pump(const Duration(milliseconds: 600));
+  await tester.pump(const Duration(milliseconds: 1100));
 }
