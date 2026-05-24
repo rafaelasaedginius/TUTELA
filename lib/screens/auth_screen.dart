@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/auth_mode.dart';
 import '../theme/tutela_colors.dart';
 import '../widgets/tutela_button.dart';
+import 'home_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key, required this.initialMode});
@@ -237,7 +238,7 @@ class _AuthScreenState extends State<AuthScreen>
                                   shadowColor: TutelaColors.plum.withValues(
                                     alpha: 0.33,
                                   ),
-                                  onPressed: () {},
+                                  onPressed: _openHome,
                                 ),
                                 const SizedBox(height: 18),
                                 GestureDetector(
@@ -303,6 +304,12 @@ class _AuthScreenState extends State<AuthScreen>
           },
         ),
       ),
+    );
+  }
+
+  void _openHome() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(builder: (context) => const HomeScreen()),
     );
   }
 }

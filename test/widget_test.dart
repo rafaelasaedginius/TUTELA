@@ -52,6 +52,72 @@ void main() {
     expect(find.text('Confirm password'), findsOneWidget);
     expect(find.text('Already have an account? Sign in.'), findsOneWidget);
   });
+
+  testWidgets('opens home after sign in', (WidgetTester tester) async {
+    await tester.pumpWidget(const TutelaApp());
+    await _finishSplash(tester);
+
+    await tester.tap(find.text('Log in'));
+    await _finishAuthRoute(tester);
+    final signInButton = find.text('Sign in').last;
+    await tester.ensureVisible(signInButton);
+    await tester.tap(signInButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Home'), findsWidgets);
+    expect(find.text('Your safety overview for today.'), findsOneWidget);
+    expect(find.text('Open Map Dashboard'), findsOneWidget);
+    expect(find.text('SOS'), findsOneWidget);
+  });
+
+  testWidgets('opens map dashboard from home', (WidgetTester tester) async {
+    await tester.pumpWidget(const TutelaApp());
+    await _finishSplash(tester);
+
+    await tester.tap(find.text('Log in'));
+    await _finishAuthRoute(tester);
+    final signInButton = find.text('Sign in').last;
+    await tester.ensureVisible(signInButton);
+    await tester.tap(signInButton);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Map'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hi, Rafaela'), findsOneWidget);
+    expect(find.text('Search destination'), findsOneWidget);
+    expect(find.text('Safer route available'), findsOneWidget);
+  });
+
+  testWidgets('opens report incident screen from map dashboard', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const TutelaApp());
+    await _finishSplash(tester);
+
+    await tester.tap(find.text('Log in'));
+    await _finishAuthRoute(tester);
+    final signInButton = find.text('Sign in').last;
+    await tester.ensureVisible(signInButton);
+    await tester.tap(signInButton);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Map'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Report'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Incident reports'), findsOneWidget);
+    expect(find.text('CRUD safety data layer'), findsOneWidget);
+    expect(find.text('Create'), findsNothing);
+    expect(find.text('Read'), findsNothing);
+    expect(find.text('Update'), findsNothing);
+    expect(find.text('Delete'), findsNothing);
+    expect(find.text('File a report'), findsOneWidget);
+    expect(find.text('Browse map pins'), findsOneWidget);
+    expect(find.text('Add follow-up'), findsOneWidget);
+    expect(find.text('Remove report'), findsOneWidget);
+  });
 }
 
 Future<void> _finishSplash(WidgetTester tester) async {
