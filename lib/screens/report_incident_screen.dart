@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/tutela_colors.dart';
+import '../widgets/tutela_bottom_nav.dart';
+import 'incident_detail_screen.dart';
 
 class ReportIncidentScreen extends StatefulWidget {
   const ReportIncidentScreen({super.key});
@@ -13,8 +15,6 @@ class ReportIncidentScreen extends StatefulWidget {
 class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   String _incidentType = 'Harassment';
   String _severity = 'Medium';
-  String _status = 'Ongoing';
-
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
@@ -231,140 +231,70 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                 ],
                               ),
                               const SizedBox(height: 12),
-                              const _ReportListItem(
+                              _ReportListItem(
                                 title: 'Poor lighting',
                                 meta: '0.8 km away - Medium',
                                 status: 'Ongoing',
+                                showActions: true,
+                                onTap: () {
+                                  _openIncidentDetail(
+                                    title: 'Poor lighting',
+                                    location: 'Jalan Melati near campus gate',
+                                    severity: 'Medium',
+                                    status: 'Ongoing',
+                                  );
+                                },
                               ),
                               const SizedBox(height: 10),
-                              const _ReportListItem(
+                              _ReportListItem(
                                 title: 'Harassment report',
                                 meta: '1.4 km away - High',
                                 status: 'Escalated',
+                                showActions: true,
+                                onTap: () {
+                                  _openIncidentDetail(
+                                    title: 'Harassment report',
+                                    location: 'Bus stop near Block C',
+                                    severity: 'High',
+                                    status: 'Escalated',
+                                  );
+                                },
                               ),
                             ],
                           ),
                         ),
                         // Read Reports Section End
-                        const SizedBox(height: 14),
-                        // Update Report Section Start
-                        _CrudPanel(
-                          title: 'Add follow-up',
-                          subtitle:
-                              'Change report status and append notes or photos.',
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _SectionLabel('Status'),
-                              const SizedBox(height: 9),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _StatusButton(
-                                      label: 'Ongoing',
-                                      selected: _status == 'Ongoing',
-                                      onTap: () {
-                                        setState(() {
-                                          _status = 'Ongoing';
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: _StatusButton(
-                                      label: 'Resolved',
-                                      selected: _status == 'Resolved',
-                                      onTap: () {
-                                        setState(() {
-                                          _status = 'Resolved';
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: _StatusButton(
-                                      label: 'Escalated',
-                                      selected: _status == 'Escalated',
-                                      onTap: () {
-                                        setState(() {
-                                          _status = 'Escalated';
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 14),
-                              _ReportTextField(
-                                hint: 'Add follow-up notes',
-                                maxLines: 3,
-                              ),
-                              const SizedBox(height: 12),
-                              _SecondaryActionButton(
-                                icon: Icons.add_photo_alternate_outlined,
-                                label: 'Append photo',
-                                onTap: () {},
-                              ),
-                              const SizedBox(height: 12),
-                              _PrimaryActionButton(
-                                label: 'Save follow-up',
-                                onTap: () {},
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Update Report Section End
-                        const SizedBox(height: 14),
-                        // Delete Report Section Start
-                        _CrudPanel(
-                          title: 'Remove report',
-                          subtitle:
-                              'Soft-delete user reports or log moderator deletion.',
-                          child: Column(
-                            children: [
-                              const _ReportListItem(
-                                title: 'Selected report',
-                                meta: 'Report ID: INC-204',
-                                status: 'Owner',
-                              ),
-                              const SizedBox(height: 12),
-                              _ReportTextField(
-                                hint: 'Reason log for removal',
-                                maxLines: 2,
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _SecondaryActionButton(
-                                      icon: Icons.archive_outlined,
-                                      label: 'Soft delete',
-                                      onTap: () {},
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: _DangerActionButton(
-                                      label: 'Hard delete',
-                                      onTap: () {},
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Delete Report Section End
                         const SizedBox(height: 12),
                       ],
                     ),
                   ),
                 ),
+                const SizedBox(height: 14),
+                // Bottom Navigation Start
+                const TutelaBottomNav(selected: TutelaNavTab.map),
+                // Bottom Navigation End
+                const SizedBox(height: 12),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  void _openIncidentDetail({
+    required String title,
+    required String location,
+    required String severity,
+    required String status,
+  }) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => IncidentDetailScreen(
+          title: title,
+          location: location,
+          severity: severity,
+          status: status,
         ),
       ),
     );
@@ -636,48 +566,6 @@ class _SeverityButton extends StatelessWidget {
   }
 }
 
-class _StatusButton extends StatelessWidget {
-  const _StatusButton({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        height: 40,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? TutelaColors.plum : TutelaColors.canvas,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: TutelaColors.plum, width: 1.1),
-        ),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            label,
-            style: GoogleFonts.dmSans(
-              color: selected ? TutelaColors.canvas : TutelaColors.plum,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              height: 1,
-              letterSpacing: 0,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _FilterChipBox extends StatelessWidget {
   const _FilterChipBox({required this.icon, required this.label});
 
@@ -724,76 +612,114 @@ class _ReportListItem extends StatelessWidget {
     required this.title,
     required this.meta,
     required this.status,
+    this.showActions = false,
+    this.onTap,
   });
 
   final String title;
   final String meta;
   final String status;
+  final bool showActions;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: TutelaColors.ivory.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: TutelaColors.plum.withValues(alpha: 0.08)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: TutelaColors.rose.withValues(alpha: 0.18),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.location_on_outlined,
-              color: TutelaColors.plum,
-              size: 21,
-            ),
-          ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(13),
+        decoration: BoxDecoration(
+          color: TutelaColors.ivory.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: TutelaColors.plum.withValues(alpha: 0.08)),
+        ),
+        child: Column(
+          children: [
+            Row(
               children: [
-                Text(
-                  title,
-                  style: GoogleFonts.dmSans(
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: TutelaColors.rose.withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.location_on_outlined,
                     color: TutelaColors.plum,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
-                    height: 1.1,
-                    letterSpacing: 0,
+                    size: 21,
                   ),
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.dmSans(
+                          color: TutelaColors.plum,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          height: 1.1,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        meta,
+                        style: GoogleFonts.dmSans(
+                          color: TutelaColors.plum.withValues(alpha: 0.58),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                          height: 1.1,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 Text(
-                  meta,
+                  status,
                   style: GoogleFonts.dmSans(
-                    color: TutelaColors.plum.withValues(alpha: 0.58),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                    height: 1.1,
+                    color: TutelaColors.rose,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    height: 1,
                     letterSpacing: 0,
                   ),
                 ),
+                if (onTap != null) ...[
+                  const SizedBox(width: 6),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: TutelaColors.plum,
+                    size: 20,
+                  ),
+                ],
               ],
             ),
-          ),
-          Text(
-            status,
-            style: GoogleFonts.dmSans(
-              color: TutelaColors.rose,
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              height: 1,
-              letterSpacing: 0,
-            ),
-          ),
-        ],
+            if (showActions) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _SecondaryActionButton(
+                      icon: Icons.edit_note_rounded,
+                      label: 'Follow-up',
+                      onTap: () {},
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _DangerActionButton(label: 'Remove', onTap: () {}),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

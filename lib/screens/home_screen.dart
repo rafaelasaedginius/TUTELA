@@ -3,6 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/tutela_colors.dart';
 import 'home_dashboard_screen.dart';
+import 'safety_circle_screen.dart';
+import 'safe_route_planner_screen.dart';
+import 'sos_confirmation_screen.dart';
+import '../widgets/tutela_bottom_nav.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -145,7 +149,7 @@ class HomeScreen extends StatelessWidget {
                                 icon: Icons.route_rounded,
                                 title: 'Safe Route',
                                 subtitle: 'Plan trip',
-                                onTap: () {},
+                                onTap: () => _openRoutePlanner(context),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -154,7 +158,7 @@ class HomeScreen extends StatelessWidget {
                                 icon: Icons.add_location_alt_outlined,
                                 title: 'Report',
                                 subtitle: 'Share alert',
-                                onTap: () {},
+                                onTap: () => _openMap(context),
                               ),
                             ),
                           ],
@@ -167,7 +171,7 @@ class HomeScreen extends StatelessWidget {
                                 icon: Icons.groups_2_outlined,
                                 title: 'Circle',
                                 subtitle: '3 contacts',
-                                onTap: () {},
+                                onTap: () => _openSafetyCircle(context),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -176,7 +180,7 @@ class HomeScreen extends StatelessWidget {
                                 icon: Icons.sos_rounded,
                                 title: 'SOS',
                                 subtitle: 'Emergency',
-                                onTap: () {},
+                                onTap: () => _openSosConfirmation(context),
                                 important: true,
                               ),
                             ),
@@ -301,7 +305,7 @@ class HomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 // Bottom Navigation Start
-                _HomeBottomNav(onMapTap: () => _openMap(context)),
+                const TutelaBottomNav(selected: TutelaNavTab.home),
                 // Bottom Navigation End
                 const SizedBox(height: 12),
               ],
@@ -316,6 +320,28 @@ class HomeScreen extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => const HomeDashboardScreen(),
+      ),
+    );
+  }
+
+  void _openRoutePlanner(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => const SafeRoutePlannerScreen(),
+      ),
+    );
+  }
+
+  void _openSafetyCircle(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (context) => const SafetyCircleScreen()),
+    );
+  }
+
+  void _openSosConfirmation(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => const SosConfirmationScreen(),
       ),
     );
   }
@@ -475,106 +501,6 @@ class _HomeIconButton extends StatelessWidget {
           ],
         ),
         child: Icon(icon, color: TutelaColors.plum, size: 21),
-      ),
-    );
-  }
-}
-
-class _HomeBottomNav extends StatelessWidget {
-  const _HomeBottomNav({required this.onMapTap});
-
-  final VoidCallback onMapTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 66,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: TutelaColors.canvas,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: TutelaColors.plum.withValues(alpha: 0.1)),
-        boxShadow: [
-          BoxShadow(
-            color: TutelaColors.plum.withValues(alpha: 0.1),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _HomeBottomNavItem(
-            icon: Icons.map_rounded,
-            label: 'Map',
-            selected: false,
-            onTap: onMapTap,
-          ),
-          const _HomeBottomNavItem(
-            icon: Icons.route_rounded,
-            label: 'Route',
-            selected: false,
-          ),
-          const _HomeBottomNavItem(
-            icon: Icons.home_rounded,
-            label: 'Home',
-            selected: true,
-          ),
-          const _HomeBottomNavItem(
-            icon: Icons.groups_2_outlined,
-            label: 'Circle',
-            selected: false,
-          ),
-          const _HomeBottomNavItem(
-            icon: Icons.person_outline_rounded,
-            label: 'Profile',
-            selected: false,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HomeBottomNavItem extends StatelessWidget {
-  const _HomeBottomNavItem({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = selected
-        ? TutelaColors.plum
-        : TutelaColors.plum.withValues(alpha: 0.45);
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 21),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: GoogleFonts.dmSans(
-              color: color,
-              fontSize: 10.5,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              height: 1,
-              letterSpacing: 0,
-            ),
-          ),
-        ],
       ),
     );
   }

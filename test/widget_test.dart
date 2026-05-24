@@ -89,6 +89,105 @@ void main() {
     expect(find.text('Safer route available'), findsOneWidget);
   });
 
+  testWidgets('opens safe route planner from home', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const TutelaApp());
+    await _finishSplash(tester);
+
+    await tester.tap(find.text('Log in'));
+    await _finishAuthRoute(tester);
+    final signInButton = find.text('Sign in').last;
+    await tester.ensureVisible(signInButton);
+    await tester.tap(signInButton);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Safe Route'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Safe routes'), findsOneWidget);
+    expect(find.text('Mobility layer'), findsOneWidget);
+    expect(find.text('Save a route'), findsOneWidget);
+    expect(find.text('View saved routes'), findsOneWidget);
+    expect(find.text('Edit tags'), findsWidgets);
+    expect(find.text('Delete'), findsWidgets);
+  });
+
+  testWidgets('opens safety circle from home', (WidgetTester tester) async {
+    await tester.pumpWidget(const TutelaApp());
+    await _finishSplash(tester);
+
+    await tester.tap(find.text('Log in'));
+    await _finishAuthRoute(tester);
+    final signInButton = find.text('Sign in').last;
+    await tester.ensureVisible(signInButton);
+    await tester.tap(signInButton);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Circle').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Emergency contacts'), findsOneWidget);
+    expect(find.text('Personal safety layer'), findsOneWidget);
+    expect(find.text('Add contact'), findsOneWidget);
+    expect(find.text('View contact list'), findsOneWidget);
+    expect(find.text('Edit'), findsWidgets);
+    expect(find.text('Remove'), findsWidgets);
+  });
+
+  testWidgets('opens sos confirmation from home', (WidgetTester tester) async {
+    await tester.pumpWidget(const TutelaApp());
+    await _finishSplash(tester);
+
+    await tester.tap(find.text('Log in'));
+    await _finishAuthRoute(tester);
+    final signInButton = find.text('Sign in').last;
+    await tester.ensureVisible(signInButton);
+    await tester.tap(signInButton);
+    await tester.pumpAndSettle();
+
+    final sosAction = find.text('SOS');
+    await tester.ensureVisible(sosAction);
+    await tester.pumpAndSettle();
+    await tester.tap(sosAction);
+    await tester.pumpAndSettle();
+
+    expect(find.text('SOS Confirmation'), findsOneWidget);
+    expect(find.text('Send emergency alert?'), findsOneWidget);
+    expect(find.text('Live location ready'), findsOneWidget);
+    expect(find.text('Alert will be sent to'), findsOneWidget);
+    expect(find.text('Send SOS'), findsOneWidget);
+    expect(find.text('Cancel'), findsOneWidget);
+  });
+
+  testWidgets('opens support groups from home navbar', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const TutelaApp());
+    await _finishSplash(tester);
+
+    await tester.tap(find.text('Log in'));
+    await _finishAuthRoute(tester);
+    final signInButton = find.text('Sign in').last;
+    await tester.ensureVisible(signInButton);
+    await tester.tap(signInButton);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Support'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Support groups'), findsOneWidget);
+    expect(find.text('Community layer'), findsOneWidget);
+    expect(find.text('Start a group'), findsOneWidget);
+    expect(find.text('Browse groups'), findsOneWidget);
+    expect(find.text('Edit'), findsWidgets);
+    expect(find.text('Archive'), findsWidgets);
+    expect(find.text('Delete'), findsWidgets);
+    expect(find.text('Create'), findsNothing);
+    expect(find.text('Read'), findsNothing);
+    expect(find.text('Update'), findsNothing);
+  });
+
   testWidgets('opens report incident screen from map dashboard', (
     WidgetTester tester,
   ) async {
@@ -115,8 +214,39 @@ void main() {
     expect(find.text('Delete'), findsNothing);
     expect(find.text('File a report'), findsOneWidget);
     expect(find.text('Browse map pins'), findsOneWidget);
+    expect(find.text('Follow-up'), findsWidgets);
+    expect(find.text('Remove'), findsWidgets);
+  });
+
+  testWidgets('opens incident detail from report list', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const TutelaApp());
+    await _finishSplash(tester);
+
+    await tester.tap(find.text('Log in'));
+    await _finishAuthRoute(tester);
+    final signInButton = find.text('Sign in').last;
+    await tester.ensureVisible(signInButton);
+    await tester.tap(signInButton);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Map'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Report'));
+    await tester.pumpAndSettle();
+
+    final reportItem = find.text('Poor lighting').last;
+    await tester.ensureVisible(reportItem);
+    await tester.tap(reportItem);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Incident detail'), findsOneWidget);
+    expect(find.text('Full report information'), findsOneWidget);
+    expect(find.text('Pinned location'), findsOneWidget);
+    expect(find.text('Follow-up history'), findsOneWidget);
     expect(find.text('Add follow-up'), findsOneWidget);
-    expect(find.text('Remove report'), findsOneWidget);
+    expect(find.text('Remove'), findsOneWidget);
   });
 }
 

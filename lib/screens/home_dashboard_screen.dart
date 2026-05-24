@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/tutela_colors.dart';
 import 'report_incident_screen.dart';
+import 'sos_confirmation_screen.dart';
+import '../widgets/tutela_bottom_nav.dart';
 
 class HomeDashboardScreen extends StatelessWidget {
   const HomeDashboardScreen({super.key});
@@ -220,7 +222,7 @@ class HomeDashboardScreen extends StatelessWidget {
                                 label: 'SOS',
                                 icon: Icons.sos_rounded,
                                 filled: true,
-                                onTap: () {},
+                                onTap: () => _openSosConfirmation(context),
                               ),
                             ),
                           ],
@@ -232,54 +234,7 @@ class HomeDashboardScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 // Bottom Navigation Start
-                Container(
-                  height: 66,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: TutelaColors.canvas,
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(
-                      color: TutelaColors.plum.withValues(alpha: 0.1),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: TutelaColors.plum.withValues(alpha: 0.1),
-                        blurRadius: 18,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _BottomNavItem(
-                        icon: Icons.map_rounded,
-                        label: 'Map',
-                        selected: true,
-                      ),
-                      _BottomNavItem(
-                        icon: Icons.route_rounded,
-                        label: 'Route',
-                        selected: false,
-                      ),
-                      _BottomNavItem(
-                        icon: Icons.home_rounded,
-                        label: 'Home',
-                        selected: false,
-                      ),
-                      _BottomNavItem(
-                        icon: Icons.groups_2_outlined,
-                        label: 'Circle',
-                        selected: false,
-                      ),
-                      _BottomNavItem(
-                        icon: Icons.person_outline_rounded,
-                        label: 'Profile',
-                        selected: false,
-                      ),
-                    ],
-                  ),
-                ),
+                const TutelaBottomNav(selected: TutelaNavTab.map),
                 // Bottom Navigation End
                 const SizedBox(height: 12),
               ],
@@ -294,6 +249,14 @@ class HomeDashboardScreen extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => const ReportIncidentScreen(),
+      ),
+    );
+  }
+
+  void _openSosConfirmation(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => const SosConfirmationScreen(),
       ),
     );
   }
@@ -522,43 +485,6 @@ class _DashboardActionButton extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _BottomNavItem extends StatelessWidget {
-  const _BottomNavItem({
-    required this.icon,
-    required this.label,
-    required this.selected,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = selected
-        ? TutelaColors.plum
-        : TutelaColors.plum.withValues(alpha: 0.45);
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 21),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: GoogleFonts.dmSans(
-            color: color,
-            fontSize: 10.5,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            height: 1,
-            letterSpacing: 0,
-          ),
-        ),
-      ],
     );
   }
 }
