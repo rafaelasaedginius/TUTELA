@@ -1,7 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../models/auth_mode.dart';
+import '../models/user_model.dart';
+import '../services/auth_service.dart';
+import '../services/user_service.dart';
 import '../theme/tutela_colors.dart';
 import '../widgets/tutela_button.dart';
 import 'home_screen.dart';
@@ -28,6 +33,20 @@ class _AuthScreenState extends State<AuthScreen>
   late final Animation<double> _actionsOpacity;
   late final Animation<Offset> _actionsOffset;
 
+  final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
+
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _cityController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+  TextEditingController();
+
+  bool _isLoading = false;
+
   bool get _isRegister => _mode == AuthMode.register;
 
   @override
@@ -47,11 +66,11 @@ class _AuthScreenState extends State<AuthScreen>
     );
     _brandOffset = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
         .animate(
-          CurvedAnimation(
-            parent: _controller,
-            curve: const Interval(0, 0.52, curve: Curves.easeOutCubic),
-          ),
-        );
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0, 0.52, curve: Curves.easeOutCubic),
+      ),
+    );
     _switchOpacity = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0.16, 0.62, curve: Curves.easeOutCubic),
@@ -69,11 +88,11 @@ class _AuthScreenState extends State<AuthScreen>
     );
     _formOffset = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
         .animate(
-          CurvedAnimation(
-            parent: _controller,
-            curve: const Interval(0.3, 0.82, curve: Curves.easeOutCubic),
-          ),
-        );
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.3, 0.82, curve: Curves.easeOutCubic),
+      ),
+    );
     _actionsOpacity = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0.48, 1, curve: Curves.easeOutCubic),
@@ -91,6 +110,13 @@ class _AuthScreenState extends State<AuthScreen>
   @override
   void dispose() {
     _controller.dispose();
+    _usernameController.dispose();
+    _nameController.dispose();
+    _emailController.dispose();
+    _cityController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -198,7 +224,7 @@ class _AuthScreenState extends State<AuthScreen>
                           child: SlideTransition(
                             position: _formOffset,
                             child: SizedBox(
-                              height: 286,
+                              height: _isRegister ? 478 : 286,
                               child: AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 360),
                                 switchInCurve: Curves.easeOutCubic,
@@ -212,7 +238,17 @@ class _AuthScreenState extends State<AuthScreen>
                                 child: Align(
                                   key: ValueKey(_mode),
                                   alignment: Alignment.topCenter,
-                                  child: _AuthFields(mode: _mode),
+                                  child: _AuthFields(
+                                    mode: _mode,
+                                    usernameController: _usernameController,
+                                    nameController: _nameController,
+                                    emailController: _emailController,
+                                    cityController: _cityController,
+                                    phoneController: _phoneController,
+                                    passwordController: _passwordController,
+                                    confirmPasswordController:
+                                    _confirmPasswordController,
+                                  ),
                                 ),
                               ),
                             ),
@@ -228,9 +264,11 @@ class _AuthScreenState extends State<AuthScreen>
                             child: Column(
                               children: [
                                 TutelaButton(
-                                  label: _isRegister
+                                  label: _isLoading
+                                      ? 'Please wait...'
+                                      : (_isRegister
                                       ? 'Create account'
-                                      : 'Sign in',
+                                      : 'Sign in'),
                                   width: contentWidth,
                                   backgroundColor: TutelaColors.plum,
                                   foregroundColor: TutelaColors.canvas,
@@ -238,7 +276,7 @@ class _AuthScreenState extends State<AuthScreen>
                                   shadowColor: TutelaColors.plum.withValues(
                                     alpha: 0.33,
                                   ),
-                                  onPressed: _openHome,
+                                  onPressed: _isLoading ? () {} : _submit,
                                 ),
                                 const SizedBox(height: 18),
                                 GestureDetector(
@@ -275,9 +313,9 @@ class _AuthScreenState extends State<AuthScreen>
                                             style: GoogleFonts.dmSans(
                                               color: TutelaColors.plum,
                                               decoration:
-                                                  TextDecoration.underline,
+                                              TextDecoration.underline,
                                               decorationColor:
-                                                  TutelaColors.plum,
+                                              TutelaColors.plum,
                                               fontSize: 14,
                                               fontWeight: FontWeight.w500,
                                               height: 1.2,
@@ -304,6 +342,111 @@ class _AuthScreenState extends State<AuthScreen>
           },
         ),
       ),
+    );
+  }
+
+  Future<void> _submit() async {
+    if (_isRegister) {
+      await _handleRegister();
+    } else {
+      await _handleSignIn();
+    }
+  }
+
+  Future<void> _handleRegister() async {
+    final username = _usernameController.text.trim();
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final city = _cityController.text.trim();
+    final phone = _phoneController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+
+    if (username.isEmpty ||
+        name.isEmpty ||
+        email.isEmpty ||
+        city.isEmpty ||
+        phone.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty) {
+      _showMessage('Please fill in all fields.');
+      return;
+    }
+    if (!RegExp(r'^[a-z0-9_]{3,20}$').hasMatch(username)) {
+      _showMessage('Username must be 3-20 lowercase letters, numbers or _.');
+      return;
+    }
+    if (password.length < 6) {
+      _showMessage('Password must be at least 6 characters.');
+      return;
+    }
+    if (password != confirmPassword) {
+      _showMessage('Passwords do not match.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final taken = await _userService.isUsernameTaken(username);
+      if (taken) {
+        _showMessage('Username already taken.');
+        return;
+      }
+
+      final fbUser = await _authService.register(
+        email: email,
+        password: password,
+      );
+
+      final now = Timestamp.now();
+      final user = User(
+        uid: fbUser.uid,
+        username: username,
+        email: email,
+        name: name,
+        phoneNumber: phone,
+        homeCity: city,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await _userService.createUser(user);
+
+      _openHome();
+    } on fb.FirebaseAuthException catch (e) {
+      _showMessage(e.message ?? 'Registration failed.');
+    } catch (e) {
+      _showMessage('Registration failed. Please try again.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleSignIn() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      _showMessage('Please enter your email and password.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await _authService.signIn(email: email, password: password);
+      _openHome();
+    } on fb.FirebaseAuthException catch (e) {
+      _showMessage(e.message ?? 'Sign in failed.');
+    } catch (e) {
+      _showMessage('Sign in failed. Please try again.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 
@@ -466,9 +609,25 @@ class _AuthModeOption extends StatelessWidget {
 }
 
 class _AuthFields extends StatelessWidget {
-  const _AuthFields({required this.mode});
+  const _AuthFields({
+    required this.mode,
+    required this.usernameController,
+    required this.nameController,
+    required this.emailController,
+    required this.cityController,
+    required this.phoneController,
+    required this.passwordController,
+    required this.confirmPasswordController,
+  });
 
   final AuthMode mode;
+  final TextEditingController usernameController;
+  final TextEditingController nameController;
+  final TextEditingController emailController;
+  final TextEditingController cityController;
+  final TextEditingController phoneController;
+  final TextEditingController passwordController;
+  final TextEditingController confirmPasswordController;
 
   bool get _isRegister => mode == AuthMode.register;
 
@@ -478,21 +637,48 @@ class _AuthFields extends StatelessWidget {
     return Column(
       children: [
         if (_isRegister) ...[
-          const _TutelaTextField(
+          _TutelaTextField(
+            controller: usernameController,
+            label: 'Username',
+            hint: 'e.g. ferzen_k',
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 14),
+          _TutelaTextField(
+            controller: nameController,
             label: 'Full name',
             hint: 'Enter your name',
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 14),
         ],
-        const _TutelaTextField(
+        _TutelaTextField(
+          controller: emailController,
           label: 'Email',
           hint: 'you@example.com',
           keyboardType: TextInputType.emailAddress,
           textInputAction: TextInputAction.next,
         ),
+        if (_isRegister) ...[
+          const SizedBox(height: 14),
+          _TutelaTextField(
+            controller: cityController,
+            label: 'City',
+            hint: 'Your home city',
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 14),
+          _TutelaTextField(
+            controller: phoneController,
+            label: 'Phone number',
+            hint: 'e.g. 0812xxxxxxx',
+            keyboardType: TextInputType.phone,
+            textInputAction: TextInputAction.next,
+          ),
+        ],
         const SizedBox(height: 14),
         _TutelaTextField(
+          controller: passwordController,
           label: 'Password',
           hint: _isRegister ? 'Create a password' : 'Enter your password',
           obscureText: true,
@@ -502,7 +688,8 @@ class _AuthFields extends StatelessWidget {
         ),
         if (_isRegister) ...[
           const SizedBox(height: 14),
-          const _TutelaTextField(
+          _TutelaTextField(
+            controller: confirmPasswordController,
             label: 'Confirm password',
             hint: 'Repeat your password',
             obscureText: true,
@@ -536,11 +723,13 @@ class _TutelaTextField extends StatelessWidget {
   const _TutelaTextField({
     required this.label,
     required this.hint,
+    this.controller,
     this.keyboardType,
     this.textInputAction,
     this.obscureText = false,
   });
 
+  final TextEditingController? controller;
   final String label;
   final String hint;
   final TextInputType? keyboardType;
@@ -551,6 +740,7 @@ class _TutelaTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     // Text Field Start
     return TextField(
+      controller: controller,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       obscureText: obscureText,

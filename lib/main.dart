@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'screens/home_dashboard_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/safe_route_planner_screen.dart';
@@ -10,7 +11,11 @@ import 'screens/support_groups_screen.dart';
 import 'theme/tutela_colors.dart';
 import 'widgets/tutela_bottom_nav.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const TutelaApp());
 }
 
