@@ -229,7 +229,8 @@ class SosConfirmationScreen extends StatelessWidget {
                               const _SosContactRow(
                                 priority: '2',
                                 name: 'Nadia',
-                                detail: 'Safety circle friend',
+                                detail:
+                                    'Safety circle friend - linked help included',
                               ),
                               const SizedBox(height: 12),
                               const _SosContactRow(
@@ -241,6 +242,53 @@ class SosConfirmationScreen extends StatelessWidget {
                           ),
                         ),
                         // SOS Contacts End
+                        const SizedBox(height: 16),
+                        // SOS Call Shortcut Start
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: TutelaColors.ivory.withValues(alpha: 0.32),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: TutelaColors.plum.withValues(alpha: 0.1),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Emergency call shortcut',
+                                style: GoogleFonts.dmSans(
+                                  color: TutelaColors.plum,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                              const SizedBox(height: 9),
+                              Text(
+                                'Nadia will receive a request to help call Campus Security. You can also open the phone dialer from here.',
+                                style: GoogleFonts.dmSans(
+                                  color: TutelaColors.plum.withValues(
+                                    alpha: 0.66,
+                                  ),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w400,
+                                  height: 1.3,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              _SosCallButton(
+                                label: 'Call Campus Security',
+                                onTap: () {},
+                              ),
+                            ],
+                          ),
+                        ),
+                        // SOS Call Shortcut End
                         const SizedBox(height: 16),
                         // SOS Message Preview Start
                         Container(
@@ -264,16 +312,35 @@ class SosConfirmationScreen extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 9),
-                              Text(
-                                'I need help. This is an SOS alert from Tutela. Please check my live location.',
-                                style: GoogleFonts.dmSans(
-                                  color: TutelaColors.plum.withValues(
-                                    alpha: 0.7,
-                                  ),
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w400,
-                                  height: 1.35,
-                                  letterSpacing: 0,
+                              Text.rich(
+                                TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: 'SOS! I need help immediately.\n',
+                                      style: GoogleFonts.dmSans(
+                                        color: TutelaColors.plum,
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w800,
+                                        height: 1.35,
+                                        letterSpacing: 0,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text:
+                                          'My location: [Share Location]\n'
+                                          'Please call Campus Security now: [help phone]\n'
+                                          'Send help to my location ASAP.',
+                                      style: GoogleFonts.dmSans(
+                                        color: TutelaColors.plum.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w400,
+                                        height: 1.35,
+                                        letterSpacing: 0,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -380,6 +447,51 @@ class _SosContactRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SosCallButton extends StatelessWidget {
+  const _SosCallButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        height: 46,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: TutelaColors.canvas,
+          borderRadius: BorderRadius.circular(23),
+          border: Border.all(color: TutelaColors.plum, width: 1.3),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.phone_in_talk_outlined,
+              color: TutelaColors.plum,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: GoogleFonts.dmSans(
+                color: TutelaColors.plum,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                height: 1,
+                letterSpacing: 0,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

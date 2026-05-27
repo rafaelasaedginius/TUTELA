@@ -13,10 +13,13 @@ class SafetyCircleScreen extends StatefulWidget {
 
 class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
   String _priority = '1st';
-  String _linkedHelp = 'None';
+  String _emergencyHelp = 'None';
   bool _checkInMode = true;
+  bool _includeHelpInMessage = true;
+  bool _showCallShortcut = true;
 
-  bool get _usesCustomHelp => _linkedHelp == 'Custom';
+  bool get _usesHelp => _emergencyHelp != 'None';
+  bool get _usesCustomHelp => _emergencyHelp == 'Custom';
   String get _assignedContact {
     switch (_priority) {
       case '1st':
@@ -94,6 +97,12 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
                         ],
                       ),
                     ),
+                    const SizedBox(width: 10),
+                    _CircleIconButton(
+                      icon: Icons.local_police_outlined,
+                      onTap: _showPoliceCallSheet,
+                      filled: true,
+                    ),
                   ],
                 ),
                 // Safety Circle Header End
@@ -117,7 +126,7 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
                                 priority: '1st',
                                 name: 'Mama',
                                 detail: 'Family - pinged 4 min ago',
-                                linkedHelp: 'None',
+                                emergencyHelp: 'No shortcut',
                                 showActions: true,
                               ),
                               const SizedBox(height: 10),
@@ -125,7 +134,7 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
                                 priority: '2nd',
                                 name: 'Nadia',
                                 detail: 'Friend - pinged yesterday',
-                                linkedHelp: 'Campus Security',
+                                emergencyHelp: 'Call Campus Security',
                                 showActions: true,
                               ),
                               const SizedBox(height: 10),
@@ -133,7 +142,7 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
                                 priority: '3rd',
                                 name: 'Campus Security',
                                 detail: 'Local help point - helpline',
-                                linkedHelp: 'Official help',
+                                emergencyHelp: 'Call shortcut',
                                 showActions: true,
                               ),
                             ],
@@ -232,7 +241,7 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
                                 ),
                               ),
                               const SizedBox(height: 14),
-                              _SectionLabel('Linked local help'),
+                              _SectionLabel('Emergency call shortcut'),
                               const SizedBox(height: 9),
                               Wrap(
                                 spacing: 8,
@@ -240,51 +249,60 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
                                 children: [
                                   _HelpChoiceChip(
                                     label: 'None',
-                                    selected: _linkedHelp == 'None',
+                                    selected: _emergencyHelp == 'None',
                                     onTap: () {
                                       setState(() {
-                                        _linkedHelp = 'None';
+                                        _emergencyHelp = 'None';
                                       });
                                     },
                                   ),
                                   _HelpChoiceChip(
                                     label: 'Campus Security',
-                                    selected: _linkedHelp == 'Campus Security',
+                                    selected:
+                                        _emergencyHelp == 'Campus Security',
                                     onTap: () {
                                       setState(() {
-                                        _linkedHelp = 'Campus Security';
+                                        _emergencyHelp = 'Campus Security';
                                       });
                                     },
                                   ),
                                   _HelpChoiceChip(
                                     label: 'Police Station',
-                                    selected: _linkedHelp == 'Police Station',
+                                    selected:
+                                        _emergencyHelp == 'Police Station',
                                     onTap: () {
                                       setState(() {
-                                        _linkedHelp = 'Police Station';
+                                        _emergencyHelp = 'Police Station';
                                       });
                                     },
                                   ),
                                   _HelpChoiceChip(
                                     label: 'Women Helpline',
-                                    selected: _linkedHelp == 'Women Helpline',
+                                    selected:
+                                        _emergencyHelp == 'Women Helpline',
                                     onTap: () {
                                       setState(() {
-                                        _linkedHelp = 'Women Helpline';
+                                        _emergencyHelp = 'Women Helpline';
                                       });
                                     },
                                   ),
                                   _HelpChoiceChip(
                                     label: 'Custom',
-                                    selected: _linkedHelp == 'Custom',
+                                    selected: _emergencyHelp == 'Custom',
                                     onTap: () {
                                       setState(() {
-                                        _linkedHelp = 'Custom';
+                                        _emergencyHelp = 'Custom';
                                       });
                                     },
                                   ),
                                 ],
                               ),
+                              if (_usesHelp && !_usesCustomHelp) ...[
+                                const SizedBox(height: 12),
+                                _CircleTextField(
+                                  hint: '$_emergencyHelp phone number',
+                                ),
+                              ],
                               if (_usesCustomHelp) ...[
                                 const SizedBox(height: 12),
                                 Row(
@@ -304,71 +322,53 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
                                 ),
                               ],
                               const SizedBox(height: 14),
+                              // SOS Help Settings Start
+                              _ToggleSettingRow(
+                                icon: Icons.sms_outlined,
+                                title: 'Include in SOS message',
+                                subtitle:
+                                    'Adds “please help call this number” to the alert.',
+                                value: _includeHelpInMessage,
+                                enabled: _usesHelp,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _includeHelpInMessage = value;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              _ToggleSettingRow(
+                                icon: Icons.phone_in_talk_outlined,
+                                title: 'Show call shortcut during SOS',
+                                subtitle:
+                                    'Shows a phone dial button on the SOS screen.',
+                                value: _showCallShortcut,
+                                enabled: _usesHelp,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _showCallShortcut = value;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              _SosMessagePreviewBox(
+                                helpName: _emergencyHelp,
+                                includeHelp: _usesHelp && _includeHelpInMessage,
+                                showShortcut: _usesHelp && _showCallShortcut,
+                              ),
+                              const SizedBox(height: 14),
                               // Check-in Mode Start
-                              Container(
-                                padding: const EdgeInsets.all(14),
-                                decoration: BoxDecoration(
-                                  color: TutelaColors.ivory.withValues(
-                                    alpha: 0.22,
-                                  ),
-                                  borderRadius: BorderRadius.circular(22),
-                                  border: Border.all(
-                                    color: TutelaColors.plum.withValues(
-                                      alpha: 0.1,
-                                    ),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.check_circle_outline_rounded,
-                                      color: TutelaColors.plum,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Check-in mode',
-                                            style: GoogleFonts.dmSans(
-                                              color: TutelaColors.plum,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w700,
-                                              height: 1,
-                                              letterSpacing: 0,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 5),
-                                          Text(
-                                            'Sends safety updates, not only SOS alerts.',
-                                            style: GoogleFonts.dmSans(
-                                              color: TutelaColors.plum
-                                                  .withValues(alpha: 0.58),
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w400,
-                                              height: 1.15,
-                                              letterSpacing: 0,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Switch(
-                                      value: _checkInMode,
-                                      activeThumbColor: TutelaColors.plum,
-                                      activeTrackColor: TutelaColors.rose
-                                          .withValues(alpha: 0.28),
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _checkInMode = value;
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                ),
+                              _ToggleSettingRow(
+                                icon: Icons.check_circle_outline_rounded,
+                                title: 'Check-in mode',
+                                subtitle:
+                                    'Sends safety updates, not only SOS alerts.',
+                                value: _checkInMode,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _checkInMode = value;
+                                  });
+                                },
                               ),
                               // Check-in Mode End
                               const SizedBox(height: 14),
@@ -395,6 +395,141 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showPoliceCallSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: TutelaColors.canvas,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 18, 22, 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Police Call Sheet Start
+                Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: TutelaColors.rose.withValues(alpha: 0.14),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.local_police_outlined,
+                        color: TutelaColors.plum,
+                        size: 23,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Call police',
+                            style: GoogleFonts.fraunces(
+                              color: TutelaColors.plum,
+                              fontSize: 25,
+                              fontWeight: FontWeight.w600,
+                              height: 1,
+                              letterSpacing: 0,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Emergency dial shortcut',
+                            style: GoogleFonts.dmSans(
+                              color: TutelaColors.plum.withValues(alpha: 0.58),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              height: 1,
+                              letterSpacing: 0,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'This will open the phone dialer with the police emergency number. You still confirm the call in the phone app.',
+                  style: GoogleFonts.dmSans(
+                    color: TutelaColors.plum.withValues(alpha: 0.7),
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w400,
+                    height: 1.35,
+                    letterSpacing: 0,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: TutelaColors.ivory.withValues(alpha: 0.32),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                      color: TutelaColors.plum.withValues(alpha: 0.1),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.phone_in_talk_outlined,
+                        color: TutelaColors.plum,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Police emergency number: 110',
+                          style: GoogleFonts.dmSans(
+                            color: TutelaColors.plum,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            height: 1,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _SecondaryCircleButton(
+                        icon: Icons.close_rounded,
+                        label: 'Cancel',
+                        onTap: () => Navigator.of(context).pop(),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _PrimaryCircleButton(
+                        label: 'Open dialer',
+                        onTap: () => Navigator.of(context).pop(),
+                      ),
+                    ),
+                  ],
+                ),
+                // Police Call Sheet End
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -481,7 +616,7 @@ class _SosChainPanel extends StatelessWidget {
           const _ChainStep(
             priority: '2nd',
             name: 'Nadia',
-            detail: 'Receives linked campus security info',
+            detail: 'SOS message asks her to call Campus Security',
           ),
           const SizedBox(height: 10),
           const _ChainStep(
@@ -632,14 +767,14 @@ class _ContactListItem extends StatelessWidget {
     required this.priority,
     required this.name,
     required this.detail,
-    required this.linkedHelp,
+    required this.emergencyHelp,
     this.showActions = false,
   });
 
   final String priority;
   final String name;
   final String detail;
-  final String linkedHelp;
+  final String emergencyHelp;
   final bool showActions;
 
   @override
@@ -713,7 +848,7 @@ class _ContactListItem extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  linkedHelp,
+                  emergencyHelp,
                   style: GoogleFonts.dmSans(
                     color: const Color(0xFF3C8B68),
                     fontSize: 11,
@@ -836,6 +971,195 @@ class _HelpChoiceChip extends StatelessWidget {
             letterSpacing: 0,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ToggleSettingRow extends StatelessWidget {
+  const _ToggleSettingRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+    this.enabled = true,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final textAlpha = enabled ? 1.0 : 0.42;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: TutelaColors.ivory.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: TutelaColors.plum.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: TutelaColors.plum.withValues(alpha: enabled ? 1 : 0.42),
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.dmSans(
+                    color: TutelaColors.plum.withValues(alpha: textAlpha),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    height: 1,
+                    letterSpacing: 0,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.dmSans(
+                    color: TutelaColors.plum.withValues(
+                      alpha: enabled ? 0.58 : 0.36,
+                    ),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    height: 1.15,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: enabled ? value : false,
+            activeThumbColor: TutelaColors.plum,
+            activeTrackColor: TutelaColors.rose.withValues(alpha: 0.28),
+            onChanged: enabled ? onChanged : null,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SosMessagePreviewBox extends StatelessWidget {
+  const _SosMessagePreviewBox({
+    required this.helpName,
+    required this.includeHelp,
+    required this.showShortcut,
+  });
+
+  final String helpName;
+  final bool includeHelp;
+  final bool showShortcut;
+
+  @override
+  Widget build(BuildContext context) {
+    final helpText = includeHelp
+        ? '\nPlease call $helpName now: [help phone]'
+        : '';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: TutelaColors.rose.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: TutelaColors.rose.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'SOS preview',
+            style: GoogleFonts.dmSans(
+              color: TutelaColors.plum,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              height: 1,
+              letterSpacing: 0,
+            ),
+          ),
+          const SizedBox(height: 9),
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: 'SOS! I need help immediately.\n',
+                  style: GoogleFonts.dmSans(
+                    color: TutelaColors.plum,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    height: 1.3,
+                    letterSpacing: 0,
+                  ),
+                ),
+                TextSpan(
+                  text:
+                      'My location: [Share Location]$helpText\n'
+                      'Send help to my location ASAP.',
+                  style: GoogleFonts.dmSans(
+                    color: TutelaColors.plum.withValues(alpha: 0.72),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                    height: 1.3,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (showShortcut) ...[
+            const SizedBox(height: 12),
+            Container(
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: TutelaColors.canvas,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: TutelaColors.plum, width: 1.2),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.phone_in_talk_outlined,
+                    color: TutelaColors.plum,
+                    size: 17,
+                  ),
+                  const SizedBox(width: 7),
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'Call $helpName',
+                        style: GoogleFonts.dmSans(
+                          color: TutelaColors.plum,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          height: 1,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -1062,13 +1386,21 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _CircleIconButton extends StatelessWidget {
-  const _CircleIconButton({required this.icon, required this.onTap});
+  const _CircleIconButton({
+    required this.icon,
+    required this.onTap,
+    this.filled = false,
+  });
 
   final IconData icon;
   final VoidCallback onTap;
+  final bool filled;
 
   @override
   Widget build(BuildContext context) {
+    final background = filled ? TutelaColors.plum : TutelaColors.canvas;
+    final iconColor = filled ? TutelaColors.canvas : TutelaColors.plum;
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -1076,18 +1408,18 @@ class _CircleIconButton extends StatelessWidget {
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: TutelaColors.canvas,
+          color: background,
           shape: BoxShape.circle,
           border: Border.all(color: TutelaColors.plum.withValues(alpha: 0.1)),
           boxShadow: [
             BoxShadow(
-              color: TutelaColors.plum.withValues(alpha: 0.08),
+              color: TutelaColors.plum.withValues(alpha: filled ? 0.18 : 0.08),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
           ],
         ),
-        child: Icon(icon, color: TutelaColors.plum, size: 21),
+        child: Icon(icon, color: iconColor, size: 21),
       ),
     );
   }
