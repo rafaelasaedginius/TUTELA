@@ -13,6 +13,22 @@ class SafetyCircleScreen extends StatefulWidget {
 
 class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
   String _priority = '1st';
+  String _linkedHelp = 'None';
+  bool _checkInMode = true;
+
+  bool get _usesCustomHelp => _linkedHelp == 'Custom';
+  String get _assignedContact {
+    switch (_priority) {
+      case '1st':
+        return 'Mama';
+      case '2nd':
+        return 'Nadia';
+      case '3rd':
+        return 'Campus Security';
+      default:
+        return '';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,12 +102,51 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
                   child: SingleChildScrollView(
                     child: Column(
                       children: [
+                        // SOS Chain Summary Start
+                        _SosChainPanel(onSendSos: () {}),
+                        // SOS Chain Summary End
+                        const SizedBox(height: 14),
+                        // Contact List Section Start
+                        _CirclePanel(
+                          title: 'View contact list',
+                          subtitle:
+                              'Sorted by priority with last-pinged status.',
+                          child: Column(
+                            children: [
+                              const _ContactListItem(
+                                priority: '1st',
+                                name: 'Mama',
+                                detail: 'Family - pinged 4 min ago',
+                                linkedHelp: 'None',
+                                showActions: true,
+                              ),
+                              const SizedBox(height: 10),
+                              const _ContactListItem(
+                                priority: '2nd',
+                                name: 'Nadia',
+                                detail: 'Friend - pinged yesterday',
+                                linkedHelp: 'Campus Security',
+                                showActions: true,
+                              ),
+                              const SizedBox(height: 10),
+                              const _ContactListItem(
+                                priority: '3rd',
+                                name: 'Campus Security',
+                                detail: 'Local help point - helpline',
+                                linkedHelp: 'Official help',
+                                showActions: true,
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Contact List Section End
+                        const SizedBox(height: 14),
                         // Add Contact Section Start
                         _CirclePanel(
                           title: 'Add contact',
-                          subtitle:
-                              'Save name, phone, relationship, and alert priority.',
+                          subtitle: 'Each priority slot holds one SOS contact.',
                           child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 children: [
@@ -106,6 +161,11 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
                               ),
                               const SizedBox(height: 12),
                               _CircleTextField(hint: 'Relationship'),
+                              const SizedBox(height: 12),
+                              _CircleTextField(
+                                hint: 'Alert message template',
+                                maxLines: 3,
+                              ),
                               const SizedBox(height: 14),
                               _SectionLabel('Priority rank'),
                               const SizedBox(height: 9),
@@ -149,9 +209,168 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
                                 ],
                               ),
                               const SizedBox(height: 14),
-                              _CircleTextField(
-                                hint: 'Optional police station or helpline',
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(13),
+                                decoration: BoxDecoration(
+                                  color: TutelaColors.peach.withValues(
+                                    alpha: 0.14,
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  '$_priority priority is currently assigned to $_assignedContact. Saving this contact as $_priority will replace $_assignedContact in the SOS chain.',
+                                  style: GoogleFonts.dmSans(
+                                    color: TutelaColors.plum.withValues(
+                                      alpha: 0.72,
+                                    ),
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.25,
+                                    letterSpacing: 0,
+                                  ),
+                                ),
                               ),
+                              const SizedBox(height: 14),
+                              _SectionLabel('Linked local help'),
+                              const SizedBox(height: 9),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  _HelpChoiceChip(
+                                    label: 'None',
+                                    selected: _linkedHelp == 'None',
+                                    onTap: () {
+                                      setState(() {
+                                        _linkedHelp = 'None';
+                                      });
+                                    },
+                                  ),
+                                  _HelpChoiceChip(
+                                    label: 'Campus Security',
+                                    selected: _linkedHelp == 'Campus Security',
+                                    onTap: () {
+                                      setState(() {
+                                        _linkedHelp = 'Campus Security';
+                                      });
+                                    },
+                                  ),
+                                  _HelpChoiceChip(
+                                    label: 'Police Station',
+                                    selected: _linkedHelp == 'Police Station',
+                                    onTap: () {
+                                      setState(() {
+                                        _linkedHelp = 'Police Station';
+                                      });
+                                    },
+                                  ),
+                                  _HelpChoiceChip(
+                                    label: 'Women Helpline',
+                                    selected: _linkedHelp == 'Women Helpline',
+                                    onTap: () {
+                                      setState(() {
+                                        _linkedHelp = 'Women Helpline';
+                                      });
+                                    },
+                                  ),
+                                  _HelpChoiceChip(
+                                    label: 'Custom',
+                                    selected: _linkedHelp == 'Custom',
+                                    onTap: () {
+                                      setState(() {
+                                        _linkedHelp = 'Custom';
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                              if (_usesCustomHelp) ...[
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _CircleTextField(
+                                        hint: 'Help name',
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: _CircleTextField(
+                                        hint: 'Help phone',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              const SizedBox(height: 14),
+                              // Check-in Mode Start
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: TutelaColors.ivory.withValues(
+                                    alpha: 0.22,
+                                  ),
+                                  borderRadius: BorderRadius.circular(22),
+                                  border: Border.all(
+                                    color: TutelaColors.plum.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.check_circle_outline_rounded,
+                                      color: TutelaColors.plum,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Check-in mode',
+                                            style: GoogleFonts.dmSans(
+                                              color: TutelaColors.plum,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                              height: 1,
+                                              letterSpacing: 0,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 5),
+                                          Text(
+                                            'Sends safety updates, not only SOS alerts.',
+                                            style: GoogleFonts.dmSans(
+                                              color: TutelaColors.plum
+                                                  .withValues(alpha: 0.58),
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w400,
+                                              height: 1.15,
+                                              letterSpacing: 0,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Switch(
+                                      value: _checkInMode,
+                                      activeThumbColor: TutelaColors.plum,
+                                      activeTrackColor: TutelaColors.rose
+                                          .withValues(alpha: 0.28),
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _checkInMode = value;
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Check-in Mode End
                               const SizedBox(height: 14),
                               _PrimaryCircleButton(
                                 label: 'Save contact',
@@ -161,43 +380,6 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
                           ),
                         ),
                         // Add Contact Section End
-                        const SizedBox(height: 14),
-                        // Contact List Section Start
-                        _CirclePanel(
-                          title: 'View contact list',
-                          subtitle:
-                              'Sorted by priority with last-pinged status.',
-                          child: Column(
-                            children: [
-                              const _ContactListItem(
-                                name: 'Mama',
-                                detail: '1st alert - pinged 4 min ago',
-                                relation: 'Family',
-                                showActions: true,
-                              ),
-                              const SizedBox(height: 10),
-                              const _ContactListItem(
-                                name: 'Nadia',
-                                detail: '2nd alert - pinged yesterday',
-                                relation: 'Friend',
-                                showActions: true,
-                              ),
-                              const SizedBox(height: 10),
-                              const _ContactListItem(
-                                name: 'Campus Security',
-                                detail: '3rd alert - local helpline',
-                                relation: 'Help',
-                                showActions: true,
-                              ),
-                              const SizedBox(height: 14),
-                              _PrimaryCircleButton(
-                                label: 'Send SOS alert chain',
-                                onTap: () {},
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Contact List Section End
                         const SizedBox(height: 12),
                       ],
                     ),
@@ -213,6 +395,172 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SosChainPanel extends StatelessWidget {
+  const _SosChainPanel({required this.onSendSos});
+
+  final VoidCallback onSendSos;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: TutelaColors.plum,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: TutelaColors.plum.withValues(alpha: 0.2),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // SOS Chain Header Start
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: TutelaColors.canvas.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.sos_rounded,
+                  color: TutelaColors.canvas,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'SOS alert chain',
+                      style: GoogleFonts.dmSans(
+                        color: TutelaColors.canvas,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        height: 1.1,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'Alerts are sent from 1st to 3rd priority.',
+                      style: GoogleFonts.dmSans(
+                        color: TutelaColors.canvas.withValues(alpha: 0.8),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w400,
+                        height: 1.15,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          // SOS Chain Header End
+          const SizedBox(height: 16),
+          const _ChainStep(
+            priority: '1st',
+            name: 'Mama',
+            detail: 'Receives live location first',
+          ),
+          const SizedBox(height: 10),
+          const _ChainStep(
+            priority: '2nd',
+            name: 'Nadia',
+            detail: 'Receives linked campus security info',
+          ),
+          const SizedBox(height: 10),
+          const _ChainStep(
+            priority: '3rd',
+            name: 'Campus Security',
+            detail: 'Official local help point',
+          ),
+          const SizedBox(height: 16),
+          _LightCircleButton(label: 'Send SOS alert chain', onTap: onSendSos),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChainStep extends StatelessWidget {
+  const _ChainStep({
+    required this.priority,
+    required this.name,
+    required this.detail,
+  });
+
+  final String priority;
+  final String name;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: TutelaColors.canvas.withValues(alpha: 0.14),
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            priority,
+            style: GoogleFonts.dmSans(
+              color: TutelaColors.canvas,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+              height: 1,
+              letterSpacing: 0,
+            ),
+          ),
+        ),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name,
+                style: GoogleFonts.dmSans(
+                  color: TutelaColors.canvas,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  height: 1.1,
+                  letterSpacing: 0,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                detail,
+                style: GoogleFonts.dmSans(
+                  color: TutelaColors.canvas.withValues(alpha: 0.78),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  height: 1.15,
+                  letterSpacing: 0,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -281,15 +629,17 @@ class _CirclePanel extends StatelessWidget {
 
 class _ContactListItem extends StatelessWidget {
   const _ContactListItem({
+    required this.priority,
     required this.name,
     required this.detail,
-    required this.relation,
+    required this.linkedHelp,
     this.showActions = false,
   });
 
+  final String priority;
   final String name;
   final String detail;
-  final String relation;
+  final String linkedHelp;
   final bool showActions;
 
   @override
@@ -308,14 +658,20 @@ class _ContactListItem extends StatelessWidget {
               Container(
                 width: 38,
                 height: 38,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: const Color(0xFFE2F7EE),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.person_outline_rounded,
-                  color: Color(0xFF3C8B68),
-                  size: 21,
+                child: Text(
+                  priority,
+                  style: GoogleFonts.dmSans(
+                    color: const Color(0xFF3C8B68),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                    letterSpacing: 0,
+                  ),
                 ),
               ),
               const SizedBox(width: 11),
@@ -347,14 +703,24 @@ class _ContactListItem extends StatelessWidget {
                   ],
                 ),
               ),
-              Text(
-                relation,
-                style: GoogleFonts.dmSans(
-                  color: const Color(0xFF3C8B68),
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                  height: 1,
-                  letterSpacing: 0,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+                decoration: BoxDecoration(
+                  color: TutelaColors.canvas,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: TutelaColors.plum.withValues(alpha: 0.1),
+                  ),
+                ),
+                child: Text(
+                  linkedHelp,
+                  style: GoogleFonts.dmSans(
+                    color: const Color(0xFF3C8B68),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    height: 1,
+                    letterSpacing: 0,
+                  ),
                 ),
               ),
             ],
@@ -392,14 +758,15 @@ class _ContactListItem extends StatelessWidget {
 }
 
 class _CircleTextField extends StatelessWidget {
-  const _CircleTextField({required this.hint});
+  const _CircleTextField({required this.hint, this.maxLines = 1});
 
   final String hint;
+  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
     return TextField(
-      maxLines: 1,
+      maxLines: maxLines,
       cursorColor: TutelaColors.plum,
       style: GoogleFonts.dmSans(
         color: TutelaColors.plum,
@@ -436,6 +803,44 @@ class _CircleTextField extends StatelessWidget {
   }
 }
 
+class _HelpChoiceChip extends StatelessWidget {
+  const _HelpChoiceChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? TutelaColors.plum : TutelaColors.canvas,
+          borderRadius: BorderRadius.circular(19),
+          border: Border.all(color: TutelaColors.plum, width: 1.2),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.dmSans(
+            color: selected ? TutelaColors.canvas : TutelaColors.plum,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+            height: 1,
+            letterSpacing: 0,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _PriorityButton extends StatelessWidget {
   const _PriorityButton({
     required this.label,
@@ -465,6 +870,39 @@ class _PriorityButton extends StatelessWidget {
           style: GoogleFonts.dmSans(
             color: selected ? TutelaColors.canvas : TutelaColors.plum,
             fontSize: 13,
+            fontWeight: FontWeight.w700,
+            height: 1,
+            letterSpacing: 0,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LightCircleButton extends StatelessWidget {
+  const _LightCircleButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        height: 48,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: TutelaColors.canvas,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.dmSans(
+            color: TutelaColors.plum,
+            fontSize: 14,
             fontWeight: FontWeight.w700,
             height: 1,
             letterSpacing: 0,
