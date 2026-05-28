@@ -53,6 +53,12 @@ class HomeDashboardScreen extends StatelessWidget {
                       ],
                     ),
                     const Spacer(),
+                    // TODO: remove after maps testing
+                    _IconCircleButton(
+                      icon: Icons.bug_report_outlined,
+                      onTap: () => Navigator.of(context).pushNamed('/maps-debug'),
+                    ),
+                    const SizedBox(width: 8),
                     _IconCircleButton(
                       icon: Icons.notifications_none_rounded,
                       onTap: () {},

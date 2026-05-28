@@ -10,7 +10,7 @@ import 'package:tutela/models/geo_location_model.dart';
 class MapsService {
   static const _nominatim = 'https://nominatim.openstreetmap.org';
   static const _osrm = 'https://router.project-osrm.org';
-  static const _overpass = 'https://overpass-api.de/api/interpreter';
+  static const _overpass = 'https://overpass.kumi.systems/api/interpreter';
 
   // Nominatim requires a descriptive User-Agent header.
   static const _headers = {'User-Agent': 'Tutela/1.0'};
@@ -129,18 +129,14 @@ class MapsService {
     required double radiusMeters,
     String? keyword,
   }) async {
-    final filter =
-        keyword != null ? '[name~"$keyword",i]' : '[amenity]';
-    final query = '''
-[out:json];
-node(around:$radiusMeters,${location.latitude},${location.longitude})$filter;
-out body;
-''';
+    final filter = keyword != null
+        ? '[name~"$keyword",i]'
+        : '["amenity"~"police|hospital|fire_station|pharmacy|clinic"]';
+    final query =
+        '[out:json][timeout:25];node(around:$radiusMeters,${location.latitude},${location.longitude})$filter;out body 50;';
 
-    final response = await http.post(
-      Uri.parse(_overpass),
-      body: {'data': query},
-    );
+    final uri = Uri.parse(_overpass).replace(queryParameters: {'data': query});
+    final response = await http.get(uri, headers: _headers);
     _assertOk(response);
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;

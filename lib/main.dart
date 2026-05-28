@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'screens/home_dashboard_screen.dart';
+import 'screens/maps_debug_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/safe_route_planner_screen.dart';
 import 'screens/safety_circle_screen.dart';
@@ -40,6 +41,7 @@ class TutelaApp extends StatelessWidget {
         TutelaRoutes.route: (context) => const SafeRoutePlannerScreen(),
         TutelaRoutes.circle: (context) => const SafetyCircleScreen(),
         TutelaRoutes.support: (context) => const SupportGroupsScreen(),
+        '/maps-debug': (context) => const MapsDebugScreen(),
       },
     );
   }
