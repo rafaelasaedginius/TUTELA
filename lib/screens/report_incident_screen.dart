@@ -1,6 +1,13 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import '../models/cloudinaryImage_model.dart';
+import '../models/geo_location_model.dart';
+import '../models/incident_enums.dart';
+import '../models/incident_model.dart';
+import '../services/incident_service.dart';
+import '../services/maps_service.dart';
 import '../theme/tutela_colors.dart';
 import '../widgets/tutela_bottom_nav.dart';
 import 'incident_detail_screen.dart';
@@ -13,8 +20,22 @@ class ReportIncidentScreen extends StatefulWidget {
 }
 
 class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
-  String _incidentType = 'Harassment';
-  String _severity = 'Medium';
+  IncidentCategory _category = IncidentCategory.harassment;
+  Severity _severity = Severity.medium;
+
+  final IncidentService _incidentService = IncidentService();
+  final MapsService _mapsService = MapsService();
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
@@ -95,40 +116,31 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                             children: [
                               _MapPinBox(),
                               const SizedBox(height: 14),
+                              _SectionLabel('Title'),
+                              const SizedBox(height: 9),
+                              _ReportTextField(
+                                controller: _titleController,
+                                hint: 'Short title for this incident',
+                              ),
+                              const SizedBox(height: 14),
                               _SectionLabel('Incident type'),
                               const SizedBox(height: 9),
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
-                                children: [
-                                  _SelectablePill(
-                                    label: 'Harassment',
-                                    selected: _incidentType == 'Harassment',
+                                children: IncidentCategory.values
+                                    .map(
+                                      (c) => _SelectablePill(
+                                    label: c.label,
+                                    selected: _category == c,
                                     onTap: () {
                                       setState(() {
-                                        _incidentType = 'Harassment';
+                                        _category = c;
                                       });
                                     },
                                   ),
-                                  _SelectablePill(
-                                    label: 'Poor lighting',
-                                    selected: _incidentType == 'Poor lighting',
-                                    onTap: () {
-                                      setState(() {
-                                        _incidentType = 'Poor lighting';
-                                      });
-                                    },
-                                  ),
-                                  _SelectablePill(
-                                    label: 'Assault',
-                                    selected: _incidentType == 'Assault',
-                                    onTap: () {
-                                      setState(() {
-                                        _incidentType = 'Assault';
-                                      });
-                                    },
-                                  ),
-                                ],
+                                )
+                                    .toList(),
                               ),
                               const SizedBox(height: 14),
                               _SectionLabel('Attach photos'),
@@ -143,7 +155,10 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                 ],
                               ),
                               const SizedBox(height: 14),
+                              _SectionLabel('Description'),
+                              const SizedBox(height: 9),
                               _ReportTextField(
+                                controller: _descriptionController,
                                 hint: 'Add a short description',
                                 maxLines: 3,
                               ),
@@ -154,11 +169,11 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                 children: [
                                   Expanded(
                                     child: _SeverityButton(
-                                      label: 'Low',
-                                      selected: _severity == 'Low',
+                                      label: Severity.low.label,
+                                      selected: _severity == Severity.low,
                                       onTap: () {
                                         setState(() {
-                                          _severity = 'Low';
+                                          _severity = Severity.low;
                                         });
                                       },
                                     ),
@@ -166,11 +181,27 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: _SeverityButton(
-                                      label: 'Medium',
-                                      selected: _severity == 'Medium',
+                                      label: Severity.medium.label,
+                                      selected: _severity == Severity.medium,
                                       onTap: () {
                                         setState(() {
-                                          _severity = 'Medium';
+                                          _severity = Severity.medium;
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _SeverityButton(
+                                      label: Severity.high.label,
+                                      selected: _severity == Severity.high,
+                                      onTap: () {
+                                        setState(() {
+                                          _severity = Severity.high;
                                         });
                                       },
                                     ),
@@ -178,11 +209,11 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: _SeverityButton(
-                                      label: 'High',
-                                      selected: _severity == 'High',
+                                      label: Severity.critical.label,
+                                      selected: _severity == Severity.critical,
                                       onTap: () {
                                         setState(() {
-                                          _severity = 'High';
+                                          _severity = Severity.critical;
                                         });
                                       },
                                     ),
@@ -191,8 +222,10 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                               ),
                               const SizedBox(height: 16),
                               _PrimaryActionButton(
-                                label: 'Save report',
-                                onTap: () {},
+                                label: _isSubmitting
+                                    ? 'Saving...'
+                                    : 'Save report',
+                                onTap: _isSubmitting ? () {} : _submitReport,
                               ),
                             ],
                           ),
@@ -203,7 +236,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                         _CrudPanel(
                           title: 'Browse map pins',
                           subtitle:
-                              'View community reports and filter the safety layer.',
+                          'View community reports and filter the safety layer.',
                           child: Column(
                             children: [
                               Row(
@@ -231,32 +264,71 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                 ],
                               ),
                               const SizedBox(height: 12),
-                              _ReportListItem(
-                                title: 'Poor lighting',
-                                meta: '0.8 km away - Medium',
-                                status: 'Ongoing',
-                                showActions: true,
-                                onTap: () {
-                                  _openIncidentDetail(
-                                    title: 'Poor lighting',
-                                    location: 'Jalan Melati near campus gate',
-                                    severity: 'Medium',
-                                    status: 'Ongoing',
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 10),
-                              _ReportListItem(
-                                title: 'Harassment report',
-                                meta: '1.4 km away - High',
-                                status: 'Escalated',
-                                showActions: true,
-                                onTap: () {
-                                  _openIncidentDetail(
-                                    title: 'Harassment report',
-                                    location: 'Bus stop near Block C',
-                                    severity: 'High',
-                                    status: 'Escalated',
+                              StreamBuilder<List<Incident>>(
+                                stream: _incidentService.streamIncidents(),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 18,
+                                      ),
+                                      child: Text(
+                                        'Loading reports...',
+                                        style: GoogleFonts.dmSans(
+                                          color: TutelaColors.plum.withValues(
+                                            alpha: 0.6,
+                                          ),
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  final incidents = snapshot.data ?? [];
+                                  if (incidents.isEmpty) {
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 18,
+                                      ),
+                                      child: Text(
+                                        'No reports yet.',
+                                        style: GoogleFonts.dmSans(
+                                          color: TutelaColors.plum.withValues(
+                                            alpha: 0.6,
+                                          ),
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  final currentUid =
+                                      fb.FirebaseAuth.instance.currentUser?.uid;
+                                  return Column(
+                                    children: [
+                                      for (var i = 0; i < incidents.length; i++)
+                                        Padding(
+                                          padding: EdgeInsets.only(
+                                            bottom: i == incidents.length - 1
+                                                ? 0
+                                                : 10,
+                                          ),
+                                          child: _ReportListItem(
+                                            title: incidents[i].title,
+                                            meta:
+                                            '${incidents[i].category.label} - ${incidents[i].severity.label}',
+                                            status: incidents[i].status.name,
+                                            showActions:
+                                            incidents[i].reporterId ==
+                                                currentUid,
+                                            onTap: () => _openIncidentDetail(
+                                              incidents[i],
+                                            ),
+                                            onRemove: () => _confirmRemove(
+                                              incidents[i].id,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   );
                                 },
                               ),
@@ -282,19 +354,118 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
     );
   }
 
-  void _openIncidentDetail({
-    required String title,
-    required String location,
-    required String severity,
-    required String status,
-  }) {
+  Future<void> _submitReport() async {
+    final title = _titleController.text.trim();
+    final description = _descriptionController.text.trim();
+
+    if (title.isEmpty || description.isEmpty) {
+      _showMessage('Please fill in the title and description.');
+      return;
+    }
+
+    final user = fb.FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _showMessage('You must be signed in to submit a report.');
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      GeoLocation location;
+      try {
+        location = await _mapsService.getCurrentLocation();
+      } catch (_) {
+        location = const GeoLocation(
+          latitude: 0,
+          longitude: 0,
+          label: 'Location unavailable',
+        );
+      }
+
+      final now = Timestamp.now();
+      final incident = Incident(
+        id: '',
+        reporterId: user.uid,
+        title: title,
+        description: description,
+        category: _category,
+        severity: _severity,
+        location: location,
+        geohash: '',
+        photos: const <CloudinaryImage>[],
+        occurredAt: now,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await _incidentService.createIncident(incident);
+
+      _titleController.clear();
+      _descriptionController.clear();
+      setState(() {
+        _category = IncidentCategory.harassment;
+        _severity = Severity.medium;
+      });
+      _showMessage('Report saved.');
+    } catch (e) {
+      _showMessage('Failed to save report.');
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _confirmRemove(String id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(
+            'Remove report?',
+            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+          ),
+          content: Text(
+            'This will soft-delete the report. You can no longer see it on the map.',
+            style: GoogleFonts.dmSans(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Remove'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirm == true) {
+      try {
+        await _incidentService.softDeleteIncident(id);
+        _showMessage('Report removed.');
+      } catch (e) {
+        _showMessage('Failed to remove report.');
+      }
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  void _openIncidentDetail(Incident incident) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => IncidentDetailScreen(
-          title: title,
-          location: location,
-          severity: severity,
-          status: status,
+          title: incident.title,
+          location: incident.location.address ??
+              incident.location.label ??
+              '-',
+          severity: incident.severity.label,
+          status: incident.status.name,
         ),
       ),
     );
@@ -614,6 +785,7 @@ class _ReportListItem extends StatelessWidget {
     required this.status,
     this.showActions = false,
     this.onTap,
+    this.onRemove,
   });
 
   final String title;
@@ -621,6 +793,7 @@ class _ReportListItem extends StatelessWidget {
   final String status;
   final bool showActions;
   final VoidCallback? onTap;
+  final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -713,7 +886,10 @@ class _ReportListItem extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: _DangerActionButton(label: 'Remove', onTap: () {}),
+                    child: _DangerActionButton(
+                      label: 'Remove',
+                      onTap: onRemove ?? () {},
+                    ),
                   ),
                 ],
               ),
@@ -726,14 +902,20 @@ class _ReportListItem extends StatelessWidget {
 }
 
 class _ReportTextField extends StatelessWidget {
-  const _ReportTextField({required this.hint, this.maxLines = 1});
+  const _ReportTextField({
+    required this.hint,
+    this.controller,
+    this.maxLines = 1,
+  });
 
+  final TextEditingController? controller;
   final String hint;
   final int maxLines;
 
   @override
   Widget build(BuildContext context) {
     return TextField(
+      controller: controller,
       maxLines: maxLines,
       cursorColor: TutelaColors.plum,
       style: GoogleFonts.dmSans(
