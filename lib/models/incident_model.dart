@@ -16,7 +16,6 @@ class Incident {
   final Timestamp occurredAt;
   final int verifiedCount;
   final IncidentStatus status;
-  final bool isDeleted;
   final Timestamp createdAt;
   final Timestamp updatedAt;
 
@@ -33,7 +32,6 @@ class Incident {
     required this.occurredAt,
     this.verifiedCount = 0,
     this.status = IncidentStatus.active,
-    this.isDeleted = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -57,7 +55,6 @@ class Incident {
       occurredAt: map['occurredAt'] ?? Timestamp.now(),
       verifiedCount: map['verifiedCount'] ?? 0,
       status: IncidentStatus.values.byName(map['status'] ?? 'active'),
-      isDeleted: map['isDeleted'] ?? false,
       createdAt: map['createdAt'] ?? Timestamp.now(),
       updatedAt: map['updatedAt'] ?? Timestamp.now(),
     );
@@ -76,7 +73,6 @@ class Incident {
       'occurredAt': occurredAt,
       'verifiedCount': verifiedCount,
       'status': status.name,
-      'isDeleted': isDeleted,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
     };

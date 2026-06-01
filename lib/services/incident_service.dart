@@ -20,7 +20,6 @@ class IncidentService {
 
   Stream<List<Incident>> streamIncidents() {
     return _incidents
-        .where('isDeleted', isEqualTo: false)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs
@@ -31,7 +30,6 @@ class IncidentService {
   Stream<List<Incident>> streamMyIncidents(String reporterId) {
     return _incidents
         .where('reporterId', isEqualTo: reporterId)
-        .where('isDeleted', isEqualTo: false)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs
@@ -46,10 +44,7 @@ class IncidentService {
     });
   }
 
-  Future<void> softDeleteIncident(String id) async {
-    await _incidents.doc(id).update({
-      'isDeleted': true,
-      'updatedAt': Timestamp.now(),
-    });
+  Future<void> deleteIncident(String id) async {
+    await _incidents.doc(id).delete();
   }
 }

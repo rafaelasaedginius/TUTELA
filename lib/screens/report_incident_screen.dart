@@ -1,7 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:latlong2/latlong.dart';
 import '../models/cloudinaryImage_model.dart';
 import '../models/geo_location_model.dart';
 import '../models/incident_enums.dart';
@@ -10,6 +13,7 @@ import '../services/incident_service.dart';
 import '../services/maps_service.dart';
 import '../theme/tutela_colors.dart';
 import '../widgets/tutela_bottom_nav.dart';
+import 'edit_incident_screen.dart';
 import 'incident_detail_screen.dart';
 
 class ReportIncidentScreen extends StatefulWidget {
@@ -25,8 +29,11 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
 
   final IncidentService _incidentService = IncidentService();
   final MapsService _mapsService = MapsService();
+  final MapController _mapController = MapController();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+
+  GeoLocation? _pickedLocation;
   bool _isSubmitting = false;
 
   @override
@@ -34,6 +41,39 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _useCurrentLocation() async {
+    try {
+      final loc = await _mapsService.getCurrentLocation();
+      setState(() => _pickedLocation = loc);
+      _mapController.move(LatLng(loc.latitude, loc.longitude), 15);
+    } catch (_) {
+      _showMessage('Failed to get current location.');
+    }
+  }
+
+  Future<void> _onMapTap(LatLng point) async {
+    setState(() {
+      _pickedLocation = GeoLocation(
+        latitude: point.latitude,
+        longitude: point.longitude,
+      );
+    });
+    try {
+      final address = await _mapsService.reverseGeocode(
+        point.latitude,
+        point.longitude,
+      );
+      if (!mounted) return;
+      setState(() {
+        _pickedLocation = GeoLocation(
+          latitude: point.latitude,
+          longitude: point.longitude,
+          address: address,
+        );
+      });
+    } catch (_) {}
   }
 
   @override
@@ -114,7 +154,49 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                           subtitle: 'Pin a location and submit incident data.',
                           child: Column(
                             children: [
-                              _MapPinBox(),
+                              _PickerMap(
+                                mapController: _mapController,
+                                picked: _pickedLocation,
+                                onTap: _onMapTap,
+                              ),
+                              const SizedBox(height: 10),
+                              GestureDetector(
+                                onTap: _useCurrentLocation,
+                                child: Container(
+                                  height: 40,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: TutelaColors.canvas,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: TutelaColors.plum,
+                                      width: 1.3,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.my_location_rounded,
+                                        color: TutelaColors.plum,
+                                        size: 17,
+                                      ),
+                                      const SizedBox(width: 7),
+                                      Text(
+                                        'Use current location',
+                                        style: GoogleFonts.dmSans(
+                                          color: TutelaColors.plum,
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              _AddressLine(location: _pickedLocation),
                               const SizedBox(height: 14),
                               _SectionLabel('Title'),
                               const SizedBox(height: 9),
@@ -323,6 +405,8 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                             onTap: () => _openIncidentDetail(
                                               incidents[i],
                                             ),
+                                            onEdit: () =>
+                                                _openEdit(incidents[i]),
                                             onRemove: () => _confirmRemove(
                                               incidents[i].id,
                                             ),
@@ -362,6 +446,10 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
       _showMessage('Please fill in the title and description.');
       return;
     }
+    if (_pickedLocation == null) {
+      _showMessage('Please pick a location on the map.');
+      return;
+    }
 
     final user = fb.FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -371,17 +459,6 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
 
     setState(() => _isSubmitting = true);
     try {
-      GeoLocation location;
-      try {
-        location = await _mapsService.getCurrentLocation();
-      } catch (_) {
-        location = const GeoLocation(
-          latitude: 0,
-          longitude: 0,
-          label: 'Location unavailable',
-        );
-      }
-
       final now = Timestamp.now();
       final incident = Incident(
         id: '',
@@ -390,7 +467,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
         description: description,
         category: _category,
         severity: _severity,
-        location: location,
+        location: _pickedLocation!,
         geohash: '',
         photos: const <CloudinaryImage>[],
         occurredAt: now,
@@ -404,6 +481,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
       setState(() {
         _category = IncidentCategory.harassment;
         _severity = Severity.medium;
+        _pickedLocation = null;
       });
       _showMessage('Report saved.');
     } catch (e) {
@@ -423,7 +501,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
             style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
           ),
           content: Text(
-            'This will soft-delete the report. You can no longer see it on the map.',
+            'This will permanently delete the report.',
             style: GoogleFonts.dmSans(),
           ),
           actions: [
@@ -441,12 +519,20 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
     );
     if (confirm == true) {
       try {
-        await _incidentService.softDeleteIncident(id);
+        await _incidentService.deleteIncident(id);
         _showMessage('Report removed.');
       } catch (e) {
         _showMessage('Failed to remove report.');
       }
     }
+  }
+
+  void _openEdit(Incident incident) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => EditIncidentScreen(incident: incident),
+      ),
+    );
   }
 
   void _showMessage(String message) {
@@ -468,6 +554,125 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
           status: incident.status.name,
         ),
       ),
+    );
+  }
+}
+
+class _PickerMap extends StatelessWidget {
+  const _PickerMap({
+    required this.mapController,
+    required this.picked,
+    required this.onTap,
+  });
+
+  static const LatLng _defaultCenter = LatLng(-6.1751, 106.8272);
+
+  final MapController mapController;
+  final GeoLocation? picked;
+  final ValueChanged<LatLng> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final apiKey = dotenv.env['MAPTILER_KEY'] ?? '';
+    final center = picked == null
+        ? _defaultCenter
+        : LatLng(picked!.latitude, picked!.longitude);
+    return Container(
+      height: 160,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: TutelaColors.plum.withValues(alpha: 0.1)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: FlutterMap(
+          mapController: mapController,
+          options: MapOptions(
+            initialCenter: center,
+            initialZoom: 13,
+            onTap: (_, point) => onTap(point),
+          ),
+          children: [
+            TileLayer(
+              urlTemplate:
+              'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=$apiKey',
+              userAgentPackageName: 'com.tutela.app',
+            ),
+            if (picked != null)
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: LatLng(picked!.latitude, picked!.longitude),
+                    width: 40,
+                    height: 40,
+                    child: const Icon(
+                      Icons.location_on_rounded,
+                      color: TutelaColors.rose,
+                      size: 36,
+                    ),
+                  ),
+                ],
+              ),
+            if (picked == null)
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: TutelaColors.canvas.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Tap map to pin location',
+                    style: GoogleFonts.dmSans(
+                      color: TutelaColors.plum,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AddressLine extends StatelessWidget {
+  const _AddressLine({required this.location});
+  final GeoLocation? location;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = location == null
+        ? 'No location pinned yet.'
+        : (location!.address ??
+        '${location!.latitude.toStringAsFixed(5)}, ${location!.longitude.toStringAsFixed(5)}');
+    return Row(
+      children: [
+        Icon(
+          Icons.place_outlined,
+          color: TutelaColors.plum.withValues(alpha: 0.7),
+          size: 16,
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.dmSans(
+              color: TutelaColors.plum.withValues(alpha: 0.7),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -537,80 +742,6 @@ class _CrudPanel extends StatelessWidget {
       ),
     );
   }
-}
-
-class _MapPinBox extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 116,
-      decoration: BoxDecoration(
-        color: TutelaColors.ivory.withValues(alpha: 0.32),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: TutelaColors.plum.withValues(alpha: 0.1)),
-      ),
-      child: Stack(
-        children: [
-          Positioned.fill(child: CustomPaint(painter: _MiniMapPainter())),
-          Center(
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: TutelaColors.rose,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: TutelaColors.rose.withValues(alpha: 0.25),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.location_on_rounded,
-                color: TutelaColors.canvas,
-                size: 24,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MiniMapPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final road = Paint()
-      ..color = TutelaColors.plum.withValues(alpha: 0.1)
-      ..strokeWidth = 16
-      ..strokeCap = StrokeCap.round;
-    final route = Paint()
-      ..color = TutelaColors.rose.withValues(alpha: 0.34)
-      ..strokeWidth = 5
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawLine(
-      Offset(size.width * 0.08, size.height * 0.3),
-      Offset(size.width * 0.92, size.height * 0.16),
-      road,
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.22, size.height),
-      Offset(size.width * 0.74, 0),
-      road,
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.12, size.height * 0.78),
-      Offset(size.width * 0.88, size.height * 0.45),
-      route,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _PhotoSlot extends StatelessWidget {
@@ -785,6 +916,7 @@ class _ReportListItem extends StatelessWidget {
     required this.status,
     this.showActions = false,
     this.onTap,
+    this.onEdit,
     this.onRemove,
   });
 
@@ -793,6 +925,7 @@ class _ReportListItem extends StatelessWidget {
   final String status;
   final bool showActions;
   final VoidCallback? onTap;
+  final VoidCallback? onEdit;
   final VoidCallback? onRemove;
 
   @override
@@ -880,8 +1013,8 @@ class _ReportListItem extends StatelessWidget {
                   Expanded(
                     child: _SecondaryActionButton(
                       icon: Icons.edit_note_rounded,
-                      label: 'Follow-up',
-                      onTap: () {},
+                      label: 'Edit report',
+                      onTap: onEdit ?? () {},
                     ),
                   ),
                   const SizedBox(width: 10),
