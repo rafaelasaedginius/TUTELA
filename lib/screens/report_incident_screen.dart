@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/cloudinaryImage_model.dart';
 import '../models/geo_location_model.dart';
@@ -29,11 +32,13 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
 
   final IncidentService _incidentService = IncidentService();
   final MapsService _mapsService = MapsService();
+  final ImagePicker _imagePicker = ImagePicker();
   final MapController _mapController = MapController();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
   GeoLocation? _pickedLocation;
+  final List<_Attachment> _attachments = [];
   bool _isSubmitting = false;
 
   @override
@@ -74,6 +79,112 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
         );
       });
     } catch (_) {}
+  }
+
+  Future<void> _openAttachmentSheet() async {
+    final source = await showModalBottomSheet<_AttachmentSource>(
+      context: context,
+      backgroundColor: TutelaColors.canvas,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: TutelaColors.plum.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Text(
+                  'Add attachment',
+                  style: GoogleFonts.dmSans(
+                    color: TutelaColors.plum,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Choose where to get the file from.',
+                  style: GoogleFonts.dmSans(
+                    color: TutelaColors.plum.withValues(alpha: 0.6),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _SheetTile(
+                  icon: Icons.photo_camera_outlined,
+                  label: 'Take photo',
+                  subtitle: 'Open camera',
+                  onTap: () => Navigator.of(context).pop(_AttachmentSource.camera),
+                ),
+                const SizedBox(height: 10),
+                _SheetTile(
+                  icon: Icons.photo_library_outlined,
+                  label: 'Choose from gallery',
+                  subtitle: 'Pick a photo or video',
+                  onTap: () => Navigator.of(context).pop(_AttachmentSource.gallery),
+                ),
+                const SizedBox(height: 10),
+                _SheetTile(
+                  icon: Icons.attach_file_rounded,
+                  label: 'Browse files',
+                  subtitle: 'Document, audio, or any file',
+                  onTap: () => Navigator.of(context).pop(_AttachmentSource.files),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (source == null) return;
+    await _pickAttachment(source);
+  }
+
+  Future<void> _pickAttachment(_AttachmentSource source) async {
+    try {
+      switch (source) {
+        case _AttachmentSource.camera:
+          final image = await _imagePicker.pickImage(source: ImageSource.camera);
+          if (image != null) _addAttachment(File(image.path), _AttachmentKind.image);
+          break;
+        case _AttachmentSource.gallery:
+          final image = await _imagePicker.pickImage(source: ImageSource.gallery);
+          if (image != null) _addAttachment(File(image.path), _AttachmentKind.image);
+          break;
+        case _AttachmentSource.files:
+          final result = await FilePicker.platform.pickFiles(allowMultiple: false);
+          if (result != null && result.files.single.path != null) {
+            _addAttachment(File(result.files.single.path!), _AttachmentKind.file);
+          }
+          break;
+      }
+    } catch (_) {
+      _showMessage('Failed to pick attachment.');
+    }
+  }
+
+  void _addAttachment(File file, _AttachmentKind kind) {
+    setState(() {
+      _attachments.add(_Attachment(file: file, kind: kind));
+    });
+  }
+
+  void _removeAttachment(int index) {
+    setState(() => _attachments.removeAt(index));
   }
 
   @override
@@ -225,17 +336,28 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                     .toList(),
                               ),
                               const SizedBox(height: 14),
-                              _SectionLabel('Attach photos'),
+                              _SectionLabel('Attachments'),
                               const SizedBox(height: 9),
-                              const Row(
-                                children: [
-                                  _PhotoSlot(label: '1'),
-                                  SizedBox(width: 10),
-                                  _PhotoSlot(label: '2'),
-                                  SizedBox(width: 10),
-                                  _PhotoSlot(label: '3'),
-                                ],
-                              ),
+                              _AddAttachmentButton(onTap: _openAttachmentSheet),
+                              if (_attachments.isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                Column(
+                                  children: [
+                                    for (var i = 0; i < _attachments.length; i++)
+                                      Padding(
+                                        padding: EdgeInsets.only(
+                                          bottom: i == _attachments.length - 1
+                                              ? 0
+                                              : 8,
+                                        ),
+                                        child: _AttachmentChip(
+                                          attachment: _attachments[i],
+                                          onRemove: () => _removeAttachment(i),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
                               const SizedBox(height: 14),
                               _SectionLabel('Description'),
                               const SizedBox(height: 9),
@@ -399,6 +521,8 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                             meta:
                                             '${incidents[i].category.label} - ${incidents[i].severity.label}',
                                             status: incidents[i].status.name,
+                                            statusColor:
+                                            incidents[i].severity.color,
                                             showActions:
                                             incidents[i].reporterId ==
                                                 currentUid,
@@ -482,6 +606,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
         _category = IncidentCategory.harassment;
         _severity = Severity.medium;
         _pickedLocation = null;
+        _attachments.clear();
       });
       _showMessage('Report saved.');
     } catch (e) {
@@ -552,6 +677,274 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
               '-',
           severity: incident.severity.label,
           status: incident.status.name,
+        ),
+      ),
+    );
+  }
+}
+
+enum _AttachmentSource { camera, gallery, files }
+
+enum _AttachmentKind { image, file }
+
+class _Attachment {
+  _Attachment({required this.file, required this.kind});
+  final File file;
+  final _AttachmentKind kind;
+
+  String get name => file.path.split(Platform.pathSeparator).last;
+}
+
+class _AddAttachmentButton extends StatelessWidget {
+  const _AddAttachmentButton({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        height: 56,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: TutelaColors.ivory.withValues(alpha: 0.24),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: TutelaColors.plum.withValues(alpha: 0.18),
+            width: 1.2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: TutelaColors.peach.withValues(alpha: 0.34),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.add_rounded,
+                color: TutelaColors.plum,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Add attachment',
+                    style: GoogleFonts.dmSans(
+                      color: TutelaColors.plum,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      height: 1.1,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Camera, gallery, or file manager',
+                    style: GoogleFonts.dmSans(
+                      color: TutelaColors.plum.withValues(alpha: 0.58),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w400,
+                      height: 1.1,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: TutelaColors.plum.withValues(alpha: 0.55),
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AttachmentChip extends StatelessWidget {
+  const _AttachmentChip({required this.attachment, required this.onRemove});
+  final _Attachment attachment;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final isImage = attachment.kind == _AttachmentKind.image;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: TutelaColors.ivory.withValues(alpha: 0.32),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: TutelaColors.plum.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: isImage
+                ? Image.file(
+              attachment.file,
+              width: 40,
+              height: 40,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _FilePlaceholder(),
+            )
+                : _FilePlaceholder(),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  attachment.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.dmSans(
+                    color: TutelaColors.plum,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.15,
+                    letterSpacing: 0,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  isImage ? 'Image' : 'File',
+                  style: GoogleFonts.dmSans(
+                    color: TutelaColors.plum.withValues(alpha: 0.55),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                    height: 1,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onRemove,
+            child: Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: TutelaColors.rose.withValues(alpha: 0.14),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.close_rounded,
+                color: TutelaColors.rose,
+                size: 17,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilePlaceholder extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 40,
+      height: 40,
+      color: TutelaColors.peach.withValues(alpha: 0.34),
+      alignment: Alignment.center,
+      child: const Icon(
+        Icons.insert_drive_file_outlined,
+        color: TutelaColors.plum,
+        size: 19,
+      ),
+    );
+  }
+}
+
+class _SheetTile extends StatelessWidget {
+  const _SheetTile({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: TutelaColors.ivory.withValues(alpha: 0.28),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: TutelaColors.plum.withValues(alpha: 0.1)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: TutelaColors.peach.withValues(alpha: 0.36),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: TutelaColors.plum, size: 19),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: GoogleFonts.dmSans(
+                      color: TutelaColors.plum,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      height: 1.15,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.dmSans(
+                      color: TutelaColors.plum.withValues(alpha: 0.6),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                      height: 1.1,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: TutelaColors.plum.withValues(alpha: 0.55),
+              size: 20,
+            ),
+          ],
         ),
       ),
     );
@@ -744,47 +1137,6 @@ class _CrudPanel extends StatelessWidget {
   }
 }
 
-class _PhotoSlot extends StatelessWidget {
-  const _PhotoSlot({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        height: 58,
-        decoration: BoxDecoration(
-          color: TutelaColors.ivory.withValues(alpha: 0.24),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: TutelaColors.plum.withValues(alpha: 0.12)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.add_photo_alternate_outlined,
-              color: TutelaColors.plum,
-              size: 19,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: GoogleFonts.dmSans(
-                color: TutelaColors.plum.withValues(alpha: 0.6),
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                height: 1,
-                letterSpacing: 0,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _SelectablePill extends StatelessWidget {
   const _SelectablePill({
     required this.label,
@@ -914,6 +1266,7 @@ class _ReportListItem extends StatelessWidget {
     required this.title,
     required this.meta,
     required this.status,
+    this.statusColor,
     this.showActions = false,
     this.onTap,
     this.onEdit,
@@ -923,6 +1276,7 @@ class _ReportListItem extends StatelessWidget {
   final String title;
   final String meta;
   final String status;
+  final Color? statusColor;
   final bool showActions;
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
@@ -989,7 +1343,7 @@ class _ReportListItem extends StatelessWidget {
                 Text(
                   status,
                   style: GoogleFonts.dmSans(
-                    color: TutelaColors.rose,
+                    color: statusColor ?? TutelaColors.rose,
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
                     height: 1,

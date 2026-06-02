@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 import '../theme/tutela_colors.dart';
 import 'home_dashboard_screen.dart';
+import 'report_incident_screen.dart';
 import 'safety_circle_screen.dart';
 import 'safe_route_planner_screen.dart';
 import 'sos_confirmation_screen.dart';
@@ -158,7 +158,7 @@ class HomeScreen extends StatelessWidget {
                                 icon: Icons.add_location_alt_outlined,
                                 title: 'Report',
                                 subtitle: 'Share alert',
-                                onTap: () => _openMap(context),
+                                onTap: () => _openReport(context),
                               ),
                             ),
                           ],
@@ -223,7 +223,7 @@ class HomeScreen extends StatelessWidget {
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Open Map Dashboard',
@@ -320,6 +320,14 @@ class HomeScreen extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => const HomeDashboardScreen(),
+      ),
+    );
+  }
+
+  void _openReport(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => const ReportIncidentScreen(),
       ),
     );
   }
