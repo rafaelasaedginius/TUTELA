@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
@@ -68,8 +67,6 @@ class _MapsDebugScreenState extends State<MapsDebugScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final apiKey = dotenv.env['MAPTILER_KEY'] ?? '';
-
     return Scaffold(
       backgroundColor: TutelaColors.ivory,
       appBar: AppBar(
@@ -89,7 +86,6 @@ class _MapsDebugScreenState extends State<MapsDebugScreen> {
         children: [
           // ── Live map ──────────────────────────────────────────────────────
           _MapCard(
-            apiKey: apiKey,
             mapController: _mapController,
             currentPin: _currentPin,
             nearbyPins: _nearbyPins,
@@ -199,18 +195,15 @@ class _MapsDebugScreenState extends State<MapsDebugScreen> {
               final results = await _service.searchNearby(
                 location: loc,
                 radiusMeters: double.parse(_nearRadC.text.trim()),
-                keyword: kw.isEmpty ? null : kw,
+                amenityType: kw.isEmpty ? null : kw,
               );
               setState(() {
                 _nearbyPins = results
                     .map((r) {
-                      final coords =
-                          (r['geometry']?['coordinates'] as List?) ?? [];
-                      if (coords.length < 2) return null;
-                      return LatLng(
-                        (coords[1] as num).toDouble(),
-                        (coords[0] as num).toDouble(),
-                      );
+                      final lat = r['latitude'] as double?;
+                      final lon = r['longitude'] as double?;
+                      if (lat == null || lon == null) return null;
+                      return LatLng(lat, lon);
                     })
                     .whereType<LatLng>()
                     .toList();
@@ -218,13 +211,13 @@ class _MapsDebugScreenState extends State<MapsDebugScreen> {
               if (_nearbyPins.isNotEmpty) _moveMap(_nearbyPins.first, zoom: 14);
               if (results.isEmpty) return 'No results';
               final first = results.first;
-              final name = first['place_name'] ?? first['text'] ?? '—';
-              final coords = (first['geometry']?['coordinates'] as List?) ?? [];
-              final lat = coords.length >= 2 ? coords[1] : '—';
-              final lon = coords.length >= 2 ? coords[0] : '—';
+              final name = first['name'] ?? '—';
+              final lat = first['latitude'] ?? '—';
+              final lon = first['longitude'] ?? '—';
               return '${results.length} results\n'
                   'First: $name\n'
-                  'At: $lat, $lon';
+                  'At: $lat, $lon\n'
+                  'All:\n${results.map((r) => r['name'] ?? '—').join('\n')}';
             }),
           ),
 
@@ -239,7 +232,7 @@ class _MapsDebugScreenState extends State<MapsDebugScreen> {
                   await _service.searchPlaces(_placeQC.text.trim());
               if (results.isEmpty) return 'No results';
               return '${results.length} results\n'
-                  'First: ${results.first['place_name'] ?? '—'}';
+                  'First: ${results.first['name'] ?? results.first['formatted_address'] ?? '—'}';
             }),
           ),
 
@@ -298,7 +291,6 @@ class _MapsDebugScreenState extends State<MapsDebugScreen> {
 
 class _MapCard extends StatelessWidget {
   const _MapCard({
-    required this.apiKey,
     required this.mapController,
     required this.currentPin,
     required this.nearbyPins,
@@ -307,7 +299,6 @@ class _MapCard extends StatelessWidget {
 
   static const _monas = LatLng(-6.1751, 106.8272);
 
-  final String apiKey;
   final MapController mapController;
   final LatLng? currentPin;
   final List<LatLng> nearbyPins;
@@ -337,8 +328,7 @@ class _MapCard extends StatelessWidget {
           ),
           children: [
             TileLayer(
-              urlTemplate:
-                  'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=$apiKey',
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'com.tutela.app',
             ),
             if (routeLine.isNotEmpty)
