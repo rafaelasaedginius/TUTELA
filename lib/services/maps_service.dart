@@ -9,11 +9,9 @@ import 'package:tutela/models/geo_location_model.dart';
 // Google Routes docs       : https://developers.google.com/maps/documentation/routes
 
 class MapsService {
-  static const _geocoding =
-      'https://maps.googleapis.com/maps/api/geocode/json';
+  static const _geocoding = 'https://maps.googleapis.com/maps/api/geocode/json';
   static const _placesNew = 'https://places.googleapis.com/v1/places';
-  static const _routes =
-      'https://routes.googleapis.com/directions/v2:computeRoutes';
+  static const _routes = 'https://routes.googleapis.com/directions/v2:computeRoutes';
 
   String get _apiKey => dotenv.env['GOOGLE_MAPS_KEY'] ?? '';
 
