@@ -3,15 +3,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
-import '../models/cloudinaryImage_model.dart';
+import '../models/attachment_model.dart';
 import '../models/geo_location_model.dart';
 import '../models/incident_enums.dart';
 import '../models/incident_model.dart';
+import '../services/cloudinary_service.dart';
 import '../services/incident_service.dart';
 import '../services/maps_service.dart';
 import '../theme/tutela_colors.dart';
@@ -32,13 +32,14 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
 
   final IncidentService _incidentService = IncidentService();
   final MapsService _mapsService = MapsService();
+  final CloudinaryService _cloudinaryService = CloudinaryService();
   final ImagePicker _imagePicker = ImagePicker();
-  final MapController _mapController = MapController();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
+  MapController? _mapController;
   GeoLocation? _pickedLocation;
-  final List<_Attachment> _attachments = [];
+  final List<_LocalAttachment> _attachments = [];
   bool _isSubmitting = false;
 
   @override
@@ -52,7 +53,10 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
     try {
       final loc = await _mapsService.getCurrentLocation();
       setState(() => _pickedLocation = loc);
-      _mapController.move(LatLng(loc.latitude, loc.longitude), 15);
+      _mapController?.move(
+        LatLng(loc.latitude, loc.longitude),
+        15,
+      );
     } catch (_) {
       _showMessage('Failed to get current location.');
     }
@@ -127,21 +131,24 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                   icon: Icons.photo_camera_outlined,
                   label: 'Take photo',
                   subtitle: 'Open camera',
-                  onTap: () => Navigator.of(context).pop(_AttachmentSource.camera),
+                  onTap: () =>
+                      Navigator.of(context).pop(_AttachmentSource.camera),
                 ),
                 const SizedBox(height: 10),
                 _SheetTile(
                   icon: Icons.photo_library_outlined,
                   label: 'Choose from gallery',
                   subtitle: 'Pick a photo or video',
-                  onTap: () => Navigator.of(context).pop(_AttachmentSource.gallery),
+                  onTap: () =>
+                      Navigator.of(context).pop(_AttachmentSource.gallery),
                 ),
                 const SizedBox(height: 10),
                 _SheetTile(
                   icon: Icons.attach_file_rounded,
                   label: 'Browse files',
                   subtitle: 'Document, audio, or any file',
-                  onTap: () => Navigator.of(context).pop(_AttachmentSource.files),
+                  onTap: () =>
+                      Navigator.of(context).pop(_AttachmentSource.files),
                 ),
               ],
             ),
@@ -158,17 +165,27 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
     try {
       switch (source) {
         case _AttachmentSource.camera:
-          final image = await _imagePicker.pickImage(source: ImageSource.camera);
-          if (image != null) _addAttachment(File(image.path), _AttachmentKind.image);
+          final image =
+          await _imagePicker.pickImage(source: ImageSource.camera);
+          if (image != null) {
+            _addAttachment(File(image.path), _AttachmentKind.image);
+          }
           break;
         case _AttachmentSource.gallery:
-          final image = await _imagePicker.pickImage(source: ImageSource.gallery);
-          if (image != null) _addAttachment(File(image.path), _AttachmentKind.image);
+          final image =
+          await _imagePicker.pickImage(source: ImageSource.gallery);
+          if (image != null) {
+            _addAttachment(File(image.path), _AttachmentKind.image);
+          }
           break;
         case _AttachmentSource.files:
-          final result = await FilePicker.platform.pickFiles(allowMultiple: false);
+          final result =
+          await FilePicker.platform.pickFiles(allowMultiple: false);
           if (result != null && result.files.single.path != null) {
-            _addAttachment(File(result.files.single.path!), _AttachmentKind.file);
+            _addAttachment(
+              File(result.files.single.path!),
+              _AttachmentKind.file,
+            );
           }
           break;
       }
@@ -179,7 +196,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
 
   void _addAttachment(File file, _AttachmentKind kind) {
     setState(() {
-      _attachments.add(_Attachment(file: file, kind: kind));
+      _attachments.add(_LocalAttachment(file: file, kind: kind));
     });
   }
 
@@ -201,7 +218,6 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 14),
-                // Incident Reports Header Start
                 Row(
                   children: [
                     _ReportIconButton(
@@ -253,20 +269,19 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                     ),
                   ],
                 ),
-                // Incident Reports Header End
                 const SizedBox(height: 18),
                 Expanded(
                   child: SingleChildScrollView(
                     child: Column(
                       children: [
-                        // Create Report Section Start
                         _CrudPanel(
                           title: 'File a report',
-                          subtitle: 'Pin a location and submit incident data.',
+                          subtitle:
+                          'Pin a location and submit incident data.',
                           child: Column(
                             children: [
                               _PickerMap(
-                                mapController: _mapController,
+                                onMapCreated: (c) => _mapController = c,
                                 picked: _pickedLocation,
                                 onTap: _onMapTap,
                               ),
@@ -343,7 +358,9 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                 const SizedBox(height: 10),
                                 Column(
                                   children: [
-                                    for (var i = 0; i < _attachments.length; i++)
+                                    for (var i = 0;
+                                    i < _attachments.length;
+                                    i++)
                                       Padding(
                                         padding: EdgeInsets.only(
                                           bottom: i == _attachments.length - 1
@@ -434,9 +451,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                             ],
                           ),
                         ),
-                        // Create Report Section End
                         const SizedBox(height: 14),
-                        // Read Reports Section Start
                         _CrudPanel(
                           title: 'Browse map pins',
                           subtitle:
@@ -505,8 +520,8 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                       ),
                                     );
                                   }
-                                  final currentUid =
-                                      fb.FirebaseAuth.instance.currentUser?.uid;
+                                  final currentUid = fb
+                                      .FirebaseAuth.instance.currentUser?.uid;
                                   return Column(
                                     children: [
                                       for (var i = 0; i < incidents.length; i++)
@@ -543,16 +558,13 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                             ],
                           ),
                         ),
-                        // Read Reports Section End
                         const SizedBox(height: 12),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 14),
-                // Bottom Navigation Start
                 const TutelaBottomNav(selected: TutelaNavTab.map),
-                // Bottom Navigation End
                 const SizedBox(height: 12),
               ],
             ),
@@ -583,6 +595,15 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
 
     setState(() => _isSubmitting = true);
     try {
+      final uploaded = <Attachment>[];
+      for (final a in _attachments) {
+        final result = await _cloudinaryService.uploadFile(
+          a.file,
+          folder: 'incidents',
+        );
+        uploaded.add(result);
+      }
+
       final now = Timestamp.now();
       final incident = Incident(
         id: '',
@@ -593,7 +614,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
         severity: _severity,
         location: _pickedLocation!,
         geohash: '',
-        photos: const <CloudinaryImage>[],
+        attachments: uploaded,
         occurredAt: now,
         createdAt: now,
         updatedAt: now,
@@ -670,14 +691,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   void _openIncidentDetail(Incident incident) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (context) => IncidentDetailScreen(
-          title: incident.title,
-          location: incident.location.address ??
-              incident.location.label ??
-              '-',
-          severity: incident.severity.label,
-          status: incident.status.name,
-        ),
+        builder: (context) => IncidentDetailScreen(incident: incident),
       ),
     );
   }
@@ -687,8 +701,8 @@ enum _AttachmentSource { camera, gallery, files }
 
 enum _AttachmentKind { image, file }
 
-class _Attachment {
-  _Attachment({required this.file, required this.kind});
+class _LocalAttachment {
+  _LocalAttachment({required this.file, required this.kind});
   final File file;
   final _AttachmentKind kind;
 
@@ -774,7 +788,7 @@ class _AddAttachmentButton extends StatelessWidget {
 
 class _AttachmentChip extends StatelessWidget {
   const _AttachmentChip({required this.attachment, required this.onRemove});
-  final _Attachment attachment;
+  final _LocalAttachment attachment;
   final VoidCallback onRemove;
 
   @override
@@ -951,78 +965,107 @@ class _SheetTile extends StatelessWidget {
   }
 }
 
-class _PickerMap extends StatelessWidget {
+class _PickerMap extends StatefulWidget {
   const _PickerMap({
-    required this.mapController,
+    required this.onMapCreated,
     required this.picked,
     required this.onTap,
   });
 
   static const LatLng _defaultCenter = LatLng(-6.1751, 106.8272);
 
-  final MapController mapController;
+  final void Function(MapController) onMapCreated;
   final GeoLocation? picked;
   final ValueChanged<LatLng> onTap;
 
   @override
+  State<_PickerMap> createState() => _PickerMapState();
+}
+
+class _PickerMapState extends State<_PickerMap> {
+  late MapController _mapController;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapController = MapController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.onMapCreated(_mapController);
+    });
+  }
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final apiKey = dotenv.env['MAPTILER_KEY'] ?? '';
-    final center = picked == null
-        ? _defaultCenter
-        : LatLng(picked!.latitude, picked!.longitude);
+    final center = widget.picked == null
+        ? _PickerMap._defaultCenter
+        : LatLng(widget.picked!.latitude, widget.picked!.longitude);
     return Container(
-      height: 160,
+      height: 220,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: TutelaColors.plum.withValues(alpha: 0.1)),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(22),
-        child: FlutterMap(
-          mapController: mapController,
-          options: MapOptions(
-            initialCenter: center,
-            initialZoom: 13,
-            onTap: (_, point) => onTap(point),
-          ),
+        child: Stack(
           children: [
-            TileLayer(
-              urlTemplate:
-              'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=$apiKey',
-              userAgentPackageName: 'com.tutela.app',
-            ),
-            if (picked != null)
-              MarkerLayer(
-                markers: [
-                  Marker(
-                    point: LatLng(picked!.latitude, picked!.longitude),
-                    width: 40,
-                    height: 40,
-                    child: const Icon(
-                      Icons.location_on_rounded,
-                      color: TutelaColors.rose,
-                      size: 36,
-                    ),
-                  ),
-                ],
+            FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: center,
+                initialZoom: 13,
+                interactionOptions: const InteractionOptions(
+                  flags: InteractiveFlag.all,
+                ),
+                onTap: (_, point) => widget.onTap(point),
               ),
-            if (picked == null)
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.tutela.app',
+                ),
+                if (widget.picked != null)
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: LatLng(widget.picked!.latitude, widget.picked!.longitude),
+                        width: 36,
+                        height: 36,
+                        child: const Icon(
+                          Icons.location_on_rounded,
+                          color: TutelaColors.plum,
+                          size: 30,
+                        ),
+                      ),
+                    ],
                   ),
-                  decoration: BoxDecoration(
-                    color: TutelaColors.canvas.withValues(alpha: 0.92),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'Tap map to pin location',
-                    style: GoogleFonts.dmSans(
-                      color: TutelaColors.plum,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
+              ],
+            ),
+            if (widget.picked == null)
+              IgnorePointer(
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: TutelaColors.canvas.withValues(alpha: 0.92),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Tap map to pin location',
+                      style: GoogleFonts.dmSans(
+                        color: TutelaColors.plum,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
@@ -1101,7 +1144,6 @@ class _CrudPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // CRUD Panel Header Start
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1128,7 +1170,6 @@ class _CrudPanel extends StatelessWidget {
               ),
             ],
           ),
-          // CRUD Panel Header End
           const SizedBox(height: 16),
           child,
         ],

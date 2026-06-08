@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
@@ -22,7 +21,8 @@ class EditIncidentScreen extends StatefulWidget {
 class _EditIncidentScreenState extends State<EditIncidentScreen> {
   final IncidentService _incidentService = IncidentService();
   final MapsService _mapsService = MapsService();
-  final MapController _mapController = MapController();
+
+  MapController? _mapController;
 
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
@@ -55,7 +55,10 @@ class _EditIncidentScreenState extends State<EditIncidentScreen> {
     try {
       final loc = await _mapsService.getCurrentLocation();
       setState(() => _location = loc);
-      _mapController.move(LatLng(loc.latitude, loc.longitude), 15);
+      _mapController?.move(
+        LatLng(loc.latitude, loc.longitude),
+        15,
+      );
     } catch (_) {
       _showMessage('Failed to get current location.');
     }
@@ -174,7 +177,7 @@ class _EditIncidentScreenState extends State<EditIncidentScreen> {
                     child: Column(
                       children: [
                         _EditMap(
-                          mapController: _mapController,
+                          onMapCreated: (c) => _mapController = c,
                           location: _location,
                           onTap: _onMapTap,
                         ),
@@ -345,23 +348,44 @@ class _EditIncidentScreenState extends State<EditIncidentScreen> {
   }
 }
 
-class _EditMap extends StatelessWidget {
+class _EditMap extends StatefulWidget {
   const _EditMap({
-    required this.mapController,
+    required this.onMapCreated,
     required this.location,
     required this.onTap,
   });
 
-  final MapController mapController;
+  final void Function(MapController) onMapCreated;
   final GeoLocation location;
   final ValueChanged<LatLng> onTap;
 
   @override
+  State<_EditMap> createState() => _EditMapState();
+}
+
+class _EditMapState extends State<_EditMap> {
+  late MapController _mapController;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapController = MapController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.onMapCreated(_mapController);
+    });
+  }
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final apiKey = dotenv.env['MAPTILER_KEY'] ?? '';
-    final pin = LatLng(location.latitude, location.longitude);
+    final pin = LatLng(widget.location.latitude, widget.location.longitude);
     return Container(
-      height: 180,
+      height: 220,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: TutelaColors.plum.withValues(alpha: 0.1)),
@@ -369,28 +393,30 @@ class _EditMap extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(22),
         child: FlutterMap(
-          mapController: mapController,
+          mapController: _mapController,
           options: MapOptions(
             initialCenter: pin,
             initialZoom: 14,
-            onTap: (_, point) => onTap(point),
+            interactionOptions: const InteractionOptions(
+              flags: InteractiveFlag.all,
+            ),
+            onTap: (_, point) => widget.onTap(point),
           ),
           children: [
             TileLayer(
-              urlTemplate:
-              'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=$apiKey',
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'com.tutela.app',
             ),
             MarkerLayer(
               markers: [
                 Marker(
                   point: pin,
-                  width: 40,
-                  height: 40,
+                  width: 36,
+                  height: 36,
                   child: const Icon(
                     Icons.location_on_rounded,
-                    color: TutelaColors.rose,
-                    size: 36,
+                    color: TutelaColors.plum,
+                    size: 30,
                   ),
                 ),
               ],

@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:tutela/models/cloudinaryImage_model.dart';
+import 'package:tutela/models/attachment_model.dart';
 import 'package:tutela/models/geo_location_model.dart';
 import 'package:tutela/models/incident_enums.dart';
 
@@ -12,7 +12,7 @@ class Incident {
   final Severity severity;
   final GeoLocation location;
   final String geohash;
-  final List<CloudinaryImage> photos;
+  final List<Attachment> attachments;
   final Timestamp occurredAt;
   final int verifiedCount;
   final IncidentStatus status;
@@ -28,7 +28,7 @@ class Incident {
     required this.severity,
     required this.location,
     required this.geohash,
-    this.photos = const [],
+    this.attachments = const [],
     required this.occurredAt,
     this.verifiedCount = 0,
     this.status = IncidentStatus.active,
@@ -48,8 +48,8 @@ class Incident {
           ? const GeoLocation(latitude: 0, longitude: 0)
           : GeoLocation.fromMap(map['location'] as Map<String, dynamic>),
       geohash: map['geohash'] ?? '',
-      photos: (map['photos'] as List<dynamic>?)
-          ?.map((e) => CloudinaryImage.fromMap(e as Map<String, dynamic>))
+      attachments: (map['attachments'] as List<dynamic>?)
+          ?.map((e) => Attachment.fromMap(e as Map<String, dynamic>))
           .toList() ??
           [],
       occurredAt: map['occurredAt'] ?? Timestamp.now(),
@@ -69,7 +69,7 @@ class Incident {
       'severity': severity.name,
       'location': location.toMap(),
       'geohash': geohash,
-      'photos': photos.map((e) => e.toMap()).toList(),
+      'attachments': attachments.map((e) => e.toMap()).toList(),
       'occurredAt': occurredAt,
       'verifiedCount': verifiedCount,
       'status': status.name,

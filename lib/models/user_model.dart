@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:tutela/models/cloudinaryImage_model.dart';
+import 'package:tutela/models/attachment_model.dart';
 
 class User {
   final String uid;
@@ -8,7 +8,7 @@ class User {
   final String name;
   final String phoneNumber;
   final String? homeCity;
-  final CloudinaryImage? avatar;
+  final Attachment? avatar;
   final List<String> trustedGroupIds;
   final Timestamp createdAt;
   final Timestamp updatedAt;
@@ -36,7 +36,7 @@ class User {
       homeCity: map['homeCity'],
       avatar: map['avatar'] == null
           ? null
-          : CloudinaryImage.fromMap(map['avatar'] as Map<String, dynamic>),
+          : Attachment.fromMap(map['avatar'] as Map<String, dynamic>),
       trustedGroupIds:
       (map['trustedGroupIds'] as List<dynamic>?)?.cast<String>() ?? [],
       createdAt: map['createdAt'] ?? Timestamp.now(),

@@ -1,21 +1,21 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
+import '../models/incident_model.dart';
+import '../models/attachment_model.dart';
 import '../theme/tutela_colors.dart';
 
 class IncidentDetailScreen extends StatelessWidget {
   const IncidentDetailScreen({
     super.key,
-    required this.title,
-    required this.location,
-    required this.severity,
-    required this.status,
+    required this.incident,
   });
 
-  final String title;
-  final String location;
-  final String severity;
-  final String status;
+  final Incident incident;
 
   @override
   Widget build(BuildContext context) {
@@ -115,7 +115,7 @@ class IncidentDetailScreen extends StatelessWidget {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Text(
-                                      title,
+                                      incident.title,
                                       style: GoogleFonts.dmSans(
                                         color: TutelaColors.canvas,
                                         fontSize: 18,
@@ -129,7 +129,7 @@ class IncidentDetailScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 14),
                               Text(
-                                'Reported near $location. This detail page is used to read the full report, review status, and continue update/delete actions.',
+                                'Reported near ${incident.location.address ?? "${incident.location.latitude}, ${incident.location.longitude}"}. This detail page is used to read the full report, review status, and continue update/delete actions.',
                                 style: GoogleFonts.dmSans(
                                   color: TutelaColors.canvas.withValues(
                                     alpha: 0.86,
@@ -151,7 +151,7 @@ class IncidentDetailScreen extends StatelessWidget {
                             Expanded(
                               child: _DetailInfoCard(
                                 label: 'Severity',
-                                value: severity,
+                                value: incident.severity.label,
                                 icon: Icons.speed_rounded,
                               ),
                             ),
@@ -159,7 +159,7 @@ class IncidentDetailScreen extends StatelessWidget {
                             Expanded(
                               child: _DetailInfoCard(
                                 label: 'Status',
-                                value: status,
+                                value: incident.status.name,
                                 icon: Icons.task_alt_rounded,
                               ),
                             ),
@@ -175,9 +175,6 @@ class IncidentDetailScreen extends StatelessWidget {
                               Container(
                                 height: 116,
                                 decoration: BoxDecoration(
-                                  color: TutelaColors.ivory.withValues(
-                                    alpha: 0.32,
-                                  ),
                                   borderRadius: BorderRadius.circular(22),
                                   border: Border.all(
                                     color: TutelaColors.plum.withValues(
@@ -185,27 +182,49 @@ class IncidentDetailScreen extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                                child: Stack(
-                                  children: [
-                                    Positioned.fill(
-                                      child: CustomPaint(
-                                        painter: _DetailMapPainter(),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(22),
+                                  child: FlutterMap(
+                                    options: MapOptions(
+                                      initialCenter: LatLng(
+                                        incident.location.latitude,
+                                        incident.location.longitude,
+                                      ),
+                                      initialZoom: 15,
+                                      interactionOptions: const InteractionOptions(
+                                        flags: InteractiveFlag.all,
                                       ),
                                     ),
-                                    const Center(
-                                      child: Icon(
-                                        Icons.location_on_rounded,
-                                        color: TutelaColors.rose,
-                                        size: 40,
+                                    children: [
+                                      TileLayer(
+                                        urlTemplate:
+                                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                        userAgentPackageName:
+                                            'com.tutela.app',
                                       ),
-                                    ),
-                                  ],
+                                      MarkerLayer(
+                                        markers: [
+                                          Marker(
+                                            point: LatLng(
+                                              incident.location.latitude,
+                                              incident.location.longitude,
+                                            ),
+                                            child: const Icon(
+                                              Icons.location_on_rounded,
+                                              color: TutelaColors.rose,
+                                              size: 40,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 10),
                               _DetailTextLine(
                                 icon: Icons.place_outlined,
-                                text: location,
+                                text: incident.location.address ?? "${incident.location.latitude}, ${incident.location.longitude}",
                               ),
                             ],
                           ),
@@ -213,18 +232,121 @@ class IncidentDetailScreen extends StatelessWidget {
                         // Detail Location End
                         const SizedBox(height: 14),
                         // Detail Photos Start
-                        _DetailPanel(
-                          title: 'Attached photos',
-                          child: const Row(
-                            children: [
-                              _PhotoPreview(index: '1'),
-                              SizedBox(width: 10),
-                              _PhotoPreview(index: '2'),
-                              SizedBox(width: 10),
-                              _PhotoPreview(index: '3'),
-                            ],
+                        if (incident.attachments.isNotEmpty)
+                          _DetailPanel(
+                            title: 'Attachments (${incident.attachments.length})',
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: incident.attachments
+                                    .asMap()
+                                    .entries
+                                    .map(
+                                      (entry) => Padding(
+                                        padding: const EdgeInsets.only(
+                                          right: 10,
+                                        ),
+                                        child: GestureDetector(
+                                          onTap: () =>
+                                              _openAttachmentViewer(context, incident.attachments, entry.key),
+                                          child: Container(
+                                            width: 64,
+                                            height: 64,
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(18),
+                                              border: Border.all(
+                                                color: TutelaColors.plum
+                                                    .withValues(alpha: 0.1),
+                                              ),
+                                            ),
+                                            child: ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(18),
+                                              child: entry.value.isImage
+                                                  ? Image.network(
+                                                      entry.value.secureUrl,
+                                                      fit: BoxFit.cover,
+                                                      loadingBuilder: (context,
+                                                          child,
+                                                          loadingProgress) {
+                                                        if (loadingProgress ==
+                                                            null) {
+                                                          return child;
+                                                        }
+                                                        return Center(
+                                                          child:
+                                                              CircularProgressIndicator(
+                                                            color: TutelaColors
+                                                                .plum,
+                                                            value: loadingProgress
+                                                                        .expectedTotalBytes !=
+                                                                    null
+                                                                ? loadingProgress
+                                                                        .cumulativeBytesLoaded /
+                                                                    loadingProgress
+                                                                        .expectedTotalBytes!
+                                                                : null,
+                                                          ),
+                                                        );
+                                                      },
+                                                      errorBuilder:
+                                                          (context, error,
+                                                              stackTrace) {
+                                                        return Container(
+                                                          color: TutelaColors
+                                                              .peach
+                                                              .withValues(
+                                                                  alpha: 0.22),
+                                                          child: const Icon(
+                                                            Icons
+                                                                .image_outlined,
+                                                            color: TutelaColors
+                                                                .plum,
+                                                            size: 20,
+                                                          ),
+                                                        );
+                                                      },
+                                                    )
+                                                  : Container(
+                                                      color: TutelaColors.peach
+                                                          .withValues(
+                                                              alpha: 0.22),
+                                                      child: const Icon(
+                                                        Icons.description_outlined,
+                                                        color: TutelaColors
+                                                            .plum,
+                                                        size: 20,
+                                                      ),
+                                                    ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                            ),
+                          )
+                        else
+                          _DetailPanel(
+                            title: 'Attachments',
+                            child: Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16.0,
+                                ),
+                                child: Text(
+                                  'No attachments',
+                                  style: GoogleFonts.dmSans(
+                                    color: TutelaColors.plum
+                                        .withValues(alpha: 0.5),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
                         // Detail Photos End
                         const SizedBox(height: 14),
                         // Detail Follow Up Start
@@ -278,6 +400,22 @@ class IncidentDetailScreen extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  void _openAttachmentViewer(
+    BuildContext context,
+    List<Attachment> attachments,
+    int initialIndex,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black87,
+      builder: (context) => _AttachmentViewer(
+        attachments: attachments,
+        initialIndex: initialIndex,
       ),
     );
   }
@@ -592,35 +730,217 @@ class _DetailIconButton extends StatelessWidget {
   }
 }
 
-class _DetailMapPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final road = Paint()
-      ..color = TutelaColors.plum.withValues(alpha: 0.1)
-      ..strokeWidth = 16
-      ..strokeCap = StrokeCap.round;
-    final route = Paint()
-      ..color = TutelaColors.rose.withValues(alpha: 0.34)
-      ..strokeWidth = 5
-      ..strokeCap = StrokeCap.round;
+class _AttachmentViewer extends StatefulWidget {
+  const _AttachmentViewer({
+    required this.attachments,
+    required this.initialIndex,
+  });
 
-    canvas.drawLine(
-      Offset(size.width * 0.08, size.height * 0.25),
-      Offset(size.width * 0.9, size.height * 0.14),
-      road,
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.2, size.height),
-      Offset(size.width * 0.72, 0),
-      road,
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.14, size.height * 0.74),
-      Offset(size.width * 0.86, size.height * 0.46),
-      route,
-    );
+  final List<Attachment> attachments;
+  final int initialIndex;
+
+  @override
+  State<_AttachmentViewer> createState() => _AttachmentViewerState();
+}
+
+class _AttachmentViewerState extends State<_AttachmentViewer> {
+  late int _currentIndex;
+  bool _isDownloading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+  }
+
+  Future<void> _downloadAttachment() async {
+    final attachment = widget.attachments[_currentIndex];
+    try {
+      setState(() => _isDownloading = true);
+      final response = await http.get(Uri.parse(attachment.secureUrl));
+      final directory = await getApplicationDocumentsDirectory();
+      final filePath =
+          '${directory.path}/${attachment.displayName}';
+      final file = File(filePath);
+      await file.writeAsBytes(response.bodyBytes);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Downloaded: ${attachment.displayName}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to download')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
+    }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  Widget build(BuildContext context) {
+    final attachment = widget.attachments[_currentIndex];
+
+    return Dialog(
+      backgroundColor: Colors.black,
+      insetPadding: EdgeInsets.zero,
+      child: Stack(
+        children: [
+          Center(
+            child: attachment.isImage
+                ? InteractiveViewer(
+                    child: Image.network(
+                      attachment.secureUrl,
+                      fit: BoxFit.contain,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: TutelaColors.rose,
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(
+                          Icons.broken_image,
+                          color: TutelaColors.rose,
+                          size: 64,
+                        );
+                      },
+                    ),
+                  )
+                : Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          attachment.isVideo
+                              ? Icons.video_file
+                              : Icons.description,
+                          color: TutelaColors.rose,
+                          size: 64,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          attachment.displayName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+          Positioned(
+            top: 16,
+            left: 16,
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 16,
+            left: 16,
+            right: 16,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (widget.attachments.length > 1) ...[
+                  GestureDetector(
+                    onTap: _currentIndex > 0
+                        ? () => setState(() => _currentIndex--)
+                        : null,
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.arrow_back,
+                        color:
+                            _currentIndex > 0 ? Colors.white : Colors.grey,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${_currentIndex + 1}/${widget.attachments.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _currentIndex < widget.attachments.length - 1
+                        ? () => setState(() => _currentIndex++)
+                        : null,
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.arrow_forward,
+                        color: _currentIndex < widget.attachments.length - 1
+                            ? Colors.white
+                            : Colors.grey,
+                      ),
+                    ),
+                  ),
+                ] else
+                  const SizedBox.shrink(),
+                GestureDetector(
+                  onTap: _isDownloading ? null : _downloadAttachment,
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: _isDownloading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                        : const Icon(
+                            Icons.download,
+                            color: Colors.white,
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
+
+
