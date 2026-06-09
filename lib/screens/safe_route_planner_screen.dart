@@ -345,8 +345,16 @@ class _SafeRoutePlannerScreenState extends State<SafeRoutePlannerScreen> {
                   children: [
                     _RouteIconButton(
                       icon: Icons.arrow_back_rounded,
-                      onTap: () => Navigator.of(context)
-                          .pushReplacementNamed(TutelaRoutes.home),
+                      onTap: () {
+                        final routeName =
+                            ModalRoute.of(context)?.settings.name;
+                        if (routeName == null) {
+                          Navigator.of(context).pop();
+                        } else {
+                          Navigator.of(context)
+                              .pushReplacementNamed(TutelaRoutes.home);
+                        }
+                      },
                     ),
                     const SizedBox(width: 12),
                     Container(

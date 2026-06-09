@@ -1,11 +1,13 @@
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../services/emergency_contact_service.dart';
 import '../theme/tutela_colors.dart';
 import 'home_dashboard_screen.dart';
 import 'report_incident_screen.dart';
 import 'safety_circle_screen.dart';
 import 'safe_route_planner_screen.dart';
-import 'sos_confirmation_screen.dart';
 import '../widgets/tutela_bottom_nav.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -170,7 +172,7 @@ class HomeScreen extends StatelessWidget {
                               child: _HomeActionCard(
                                 icon: Icons.groups_2_outlined,
                                 title: 'Circle',
-                                subtitle: '3 contacts',
+                                subtitle: 'Emergency contacts',
                                 onTap: () => _openSafetyCircle(context),
                               ),
                             ),
@@ -180,7 +182,7 @@ class HomeScreen extends StatelessWidget {
                                 icon: Icons.sos_rounded,
                                 title: 'SOS',
                                 subtitle: 'Emergency',
-                                onTap: () => _openSosConfirmation(context),
+                                onTap: () => _triggerSos(context),
                                 important: true,
                               ),
                             ),
@@ -346,12 +348,32 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  void _openSosConfirmation(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) => const SosConfirmationScreen(),
-      ),
-    );
+  Future<void> _triggerSos(BuildContext context) async {
+    final uid = fb.FirebaseAuth.instance.currentUser?.uid;
+
+    String? phoneNumber;
+    if (uid != null) {
+      try {
+        final contacts =
+            await EmergencyContactService().getContacts(uid);
+        if (contacts.isNotEmpty) {
+          phoneNumber = contacts.first.phoneNumber;
+        }
+      } catch (_) {}
+    }
+
+    phoneNumber ??= '110';
+
+    final cleaned = phoneNumber.replaceAll(RegExp(r'\s+'), '');
+    final uri = Uri(scheme: 'tel', path: cleaned);
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot open phone app.')),
+      );
+    }
   }
 }
 

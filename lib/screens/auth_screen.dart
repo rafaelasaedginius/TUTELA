@@ -42,7 +42,7 @@ class _AuthScreenState extends State<AuthScreen>
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
-  TextEditingController();
+      TextEditingController();
 
   bool _isLoading = false;
 
@@ -65,11 +65,11 @@ class _AuthScreenState extends State<AuthScreen>
     );
     _brandOffset = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
         .animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0, 0.52, curve: Curves.easeOutCubic),
-      ),
-    );
+          CurvedAnimation(
+            parent: _controller,
+            curve: const Interval(0, 0.52, curve: Curves.easeOutCubic),
+          ),
+        );
     _switchOpacity = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0.16, 0.62, curve: Curves.easeOutCubic),
@@ -87,11 +87,11 @@ class _AuthScreenState extends State<AuthScreen>
     );
     _formOffset = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
         .animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.3, 0.82, curve: Curves.easeOutCubic),
-      ),
-    );
+          CurvedAnimation(
+            parent: _controller,
+            curve: const Interval(0.3, 0.82, curve: Curves.easeOutCubic),
+          ),
+        );
     _actionsOpacity = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0.48, 1, curve: Curves.easeOutCubic),
@@ -246,7 +246,7 @@ class _AuthScreenState extends State<AuthScreen>
                                     phoneController: _phoneController,
                                     passwordController: _passwordController,
                                     confirmPasswordController:
-                                    _confirmPasswordController,
+                                        _confirmPasswordController,
                                   ),
                                 ),
                               ),
@@ -266,8 +266,8 @@ class _AuthScreenState extends State<AuthScreen>
                                   label: _isLoading
                                       ? 'Please wait...'
                                       : (_isRegister
-                                      ? 'Create account'
-                                      : 'Sign in'),
+                                            ? 'Create account'
+                                            : 'Sign in'),
                                   width: contentWidth,
                                   backgroundColor: TutelaColors.plum,
                                   foregroundColor: TutelaColors.canvas,
@@ -312,9 +312,9 @@ class _AuthScreenState extends State<AuthScreen>
                                             style: GoogleFonts.dmSans(
                                               color: TutelaColors.plum,
                                               decoration:
-                                              TextDecoration.underline,
+                                                  TextDecoration.underline,
                                               decorationColor:
-                                              TutelaColors.plum,
+                                                  TutelaColors.plum,
                                               fontSize: 14,
                                               fontWeight: FontWeight.w500,
                                               height: 1.2,
@@ -444,9 +444,9 @@ class _AuthScreenState extends State<AuthScreen>
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _openHome() {
@@ -676,22 +676,20 @@ class _AuthFields extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 14),
-        _TutelaTextField(
+        _PasswordTextField(
           controller: passwordController,
           label: 'Password',
           hint: _isRegister ? 'Create a password' : 'Enter your password',
-          obscureText: true,
           textInputAction: _isRegister
               ? TextInputAction.next
               : TextInputAction.done,
         ),
         if (_isRegister) ...[
           const SizedBox(height: 14),
-          _TutelaTextField(
+          _PasswordTextField(
             controller: confirmPasswordController,
             label: 'Confirm password',
             hint: 'Repeat your password',
-            obscureText: true,
             textInputAction: TextInputAction.done,
           ),
         ] else ...[
@@ -726,6 +724,7 @@ class _TutelaTextField extends StatelessWidget {
     this.keyboardType,
     this.textInputAction,
     this.obscureText = false,
+    this.suffixIcon,
   });
 
   final TextEditingController? controller;
@@ -734,6 +733,7 @@ class _TutelaTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
   final bool obscureText;
+  final Widget? suffixIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -772,6 +772,7 @@ class _TutelaTextField extends StatelessWidget {
           horizontal: 18,
           vertical: 17,
         ),
+        suffixIcon: suffixIcon,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(26),
           borderSide: BorderSide(
@@ -785,5 +786,53 @@ class _TutelaTextField extends StatelessWidget {
       ),
     );
     // Text Field End
+  }
+}
+
+class _PasswordTextField extends StatefulWidget {
+  const _PasswordTextField({
+    required this.controller,
+    required this.label,
+    required this.hint,
+    this.textInputAction,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final TextInputAction? textInputAction;
+
+  @override
+  State<_PasswordTextField> createState() => _PasswordTextFieldState();
+}
+
+class _PasswordTextFieldState extends State<_PasswordTextField> {
+  bool _passwordVisible = false;
+
+  @override
+  Widget build(BuildContext context) {
+    // Password Visibility Button Start
+    return _TutelaTextField(
+      controller: widget.controller,
+      label: widget.label,
+      hint: widget.hint,
+      obscureText: !_passwordVisible,
+      textInputAction: widget.textInputAction,
+      suffixIcon: IconButton(
+        tooltip: _passwordVisible ? 'Hide password' : 'Show password',
+        splashRadius: 20,
+        onPressed: () {
+          setState(() => _passwordVisible = !_passwordVisible);
+        },
+        icon: Icon(
+          _passwordVisible
+              ? Icons.visibility_off_outlined
+              : Icons.visibility_outlined,
+          color: TutelaColors.plum.withValues(alpha: 0.68),
+          size: 20,
+        ),
+      ),
+    );
+    // Password Visibility Button End
   }
 }

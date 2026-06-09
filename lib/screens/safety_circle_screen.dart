@@ -56,7 +56,7 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
                   children: [
                     _CircleIconButton(
                       icon: Icons.arrow_back_rounded,
-                      onTap: () => Navigator.of(context).pop(),
+                      onTap: _goBack,
                     ),
                     const SizedBox(width: 12),
                     Container(
@@ -121,7 +121,7 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
                               _CirclePanel(
                                 title: 'Emergency contact list',
                                 subtitle:
-                                    'Saved under users/{uid}/contacts/{id}.',
+                                    'People to contact in an emergency.',
                                 child: StreamBuilder<List<EmergencyContact>>(
                                   stream: _contactService.watchContacts(uid),
                                   builder: (context, snapshot) {
@@ -336,6 +336,18 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
       _showMessage('Failed to save contact.');
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  void _goBack() {
+    // If opened via anonymous push (e.g. home quick action), pop normally.
+    // If opened via named route (bottom nav), replace with home to avoid
+    // revealing the getting-started screen that sits below in the stack.
+    final routeName = ModalRoute.of(context)?.settings.name;
+    if (routeName == null) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacementNamed(TutelaRoutes.home);
     }
   }
 

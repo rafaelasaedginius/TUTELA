@@ -255,7 +255,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                           ),
                           const SizedBox(height: 7),
                           Text(
-                            'CRUD safety data layer',
+                            'Share safety alerts with the community.',
                             style: GoogleFonts.dmSans(
                               color: TutelaColors.plum.withValues(alpha: 0.58),
                               fontSize: 14,

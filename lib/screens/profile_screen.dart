@@ -1,11 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../services/auth_service.dart';
 import '../theme/tutela_colors.dart';
 import '../widgets/tutela_bottom_nav.dart';
+import 'splash_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
+  Future<void> _logout(BuildContext context) async {
+    await AuthService().signOut();
+    if (!context.mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (context) => const SplashScreen()),
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -222,21 +233,13 @@ class ProfileScreen extends StatelessWidget {
                             children: [
                               _ProfileTextField(hint: 'Email address'),
                               const SizedBox(height: 12),
-                              _ProfileTextField(hint: 'Current password'),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _ProfileTextField(
-                                      hint: 'New password',
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: _ProfileTextField(hint: 'Confirm'),
-                                  ),
-                                ],
+                              const _ProfilePasswordField(
+                                hint: 'Current password',
                               ),
+                              const SizedBox(height: 12),
+                              const _ProfilePasswordField(hint: 'New password'),
+                              const SizedBox(height: 12),
+                              const _ProfilePasswordField(hint: 'Confirm'),
                               const SizedBox(height: 14),
                               _PrimaryProfileButton(
                                 label: 'Update security',
@@ -270,6 +273,14 @@ class ProfileScreen extends StatelessWidget {
                                 label: 'Delete account',
                                 onTap: () {},
                               ),
+                              const SizedBox(height: 10),
+                              // Logout Button Start
+                              _SecondaryProfileButton(
+                                label: 'Log out',
+                                icon: Icons.logout_rounded,
+                                onTap: () => _logout(context),
+                              ),
+                              // Logout Button End
                             ],
                           ),
                         ),
@@ -356,13 +367,20 @@ class _ProfilePanel extends StatelessWidget {
 }
 
 class _ProfileTextField extends StatelessWidget {
-  const _ProfileTextField({required this.hint});
+  const _ProfileTextField({
+    required this.hint,
+    this.obscureText = false,
+    this.suffixIcon,
+  });
 
   final String hint;
+  final bool obscureText;
+  final Widget? suffixIcon;
 
   @override
   Widget build(BuildContext context) {
     return TextField(
+      obscureText: obscureText,
       cursorColor: TutelaColors.plum,
       style: GoogleFonts.dmSans(
         color: TutelaColors.plum,
@@ -384,6 +402,7 @@ class _ProfileTextField extends StatelessWidget {
           horizontal: 16,
           vertical: 15,
         ),
+        suffixIcon: suffixIcon,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(22),
           borderSide: BorderSide(
@@ -396,6 +415,43 @@ class _ProfileTextField extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _ProfilePasswordField extends StatefulWidget {
+  const _ProfilePasswordField({required this.hint});
+
+  final String hint;
+
+  @override
+  State<_ProfilePasswordField> createState() => _ProfilePasswordFieldState();
+}
+
+class _ProfilePasswordFieldState extends State<_ProfilePasswordField> {
+  bool _passwordVisible = false;
+
+  @override
+  Widget build(BuildContext context) {
+    // Profile Password Visibility Start
+    return _ProfileTextField(
+      hint: widget.hint,
+      obscureText: !_passwordVisible,
+      suffixIcon: IconButton(
+        tooltip: _passwordVisible ? 'Hide password' : 'Show password',
+        splashRadius: 20,
+        onPressed: () {
+          setState(() => _passwordVisible = !_passwordVisible);
+        },
+        icon: Icon(
+          _passwordVisible
+              ? Icons.visibility_off_outlined
+              : Icons.visibility_outlined,
+          color: TutelaColors.plum.withValues(alpha: 0.68),
+          size: 20,
+        ),
+      ),
+    );
+    // Profile Password Visibility End
   }
 }
 
@@ -491,6 +547,52 @@ class _PrimaryProfileButton extends StatelessWidget {
             height: 1,
             letterSpacing: 0,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SecondaryProfileButton extends StatelessWidget {
+  const _SecondaryProfileButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        height: 46,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: TutelaColors.canvas,
+          borderRadius: BorderRadius.circular(23),
+          border: Border.all(color: TutelaColors.plum, width: 1.3),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: TutelaColors.plum, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: GoogleFonts.dmSans(
+                color: TutelaColors.plum,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                height: 1,
+                letterSpacing: 0,
+              ),
+            ),
+          ],
         ),
       ),
     );

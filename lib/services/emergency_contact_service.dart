@@ -9,6 +9,19 @@ class EmergencyContactService {
     return _firestore.collection('users').doc(uid).collection('contacts');
   }
 
+  Future<List<EmergencyContact>> getContacts(String uid) async {
+    final snapshot = await _contactsRef(uid).orderBy('priority').get();
+    final contacts = snapshot.docs
+        .map((doc) => EmergencyContact.fromMap(doc.data(), doc.id))
+        .toList();
+    contacts.sort((a, b) {
+      final priorityCompare = a.priority.compareTo(b.priority);
+      if (priorityCompare != 0) return priorityCompare;
+      return a.createdAt.compareTo(b.createdAt);
+    });
+    return contacts;
+  }
+
   Stream<List<EmergencyContact>> watchContacts(String uid) {
     return _contactsRef(uid).orderBy('priority').snapshots().map((snapshot) {
       final contacts = snapshot.docs
