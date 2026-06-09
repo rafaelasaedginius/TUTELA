@@ -3,14 +3,14 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/tutela_colors.dart';
 
-enum TutelaNavTab { map, route, home, circle, support }
+enum TutelaNavTab { map, route, home, circle, profile }
 
 class TutelaRoutes {
   static const home = '/home';
   static const map = '/map';
   static const route = '/route';
   static const circle = '/circle';
-  static const support = '/support';
+  static const profile = '/profile';
 }
 
 class TutelaBottomNav extends StatelessWidget {
@@ -63,10 +63,10 @@ class TutelaBottomNav extends StatelessWidget {
             onTap: () => _goTo(context, TutelaRoutes.circle),
           ),
           _BottomNavItem(
-            icon: Icons.chat_bubble_outline_rounded,
-            label: 'Support',
-            selected: selected == TutelaNavTab.support,
-            onTap: () => _goTo(context, TutelaRoutes.support),
+            icon: Icons.person_outline_rounded,
+            label: 'Profile',
+            selected: selected == TutelaNavTab.profile,
+            onTap: () => _goTo(context, TutelaRoutes.profile),
           ),
         ],
       ),

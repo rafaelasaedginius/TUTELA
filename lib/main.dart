@@ -6,19 +6,17 @@ import 'firebase_options.dart';
 import 'screens/home_dashboard_screen.dart';
 import 'screens/maps_debug_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/profile_screen.dart';
 import 'screens/safe_route_planner_screen.dart';
 import 'screens/safety_circle_screen.dart';
 import 'screens/splash_screen.dart';
-import 'screens/support_groups_screen.dart';
 import 'theme/tutela_colors.dart';
 import 'widgets/tutela_bottom_nav.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const TutelaApp());
 }
 
@@ -42,7 +40,7 @@ class TutelaApp extends StatelessWidget {
         TutelaRoutes.map: (context) => const HomeDashboardScreen(),
         TutelaRoutes.route: (context) => const SafeRoutePlannerScreen(),
         TutelaRoutes.circle: (context) => const SafetyCircleScreen(),
-        TutelaRoutes.support: (context) => const SupportGroupsScreen(),
+        TutelaRoutes.profile: (context) => const ProfileScreen(),
         '/maps-debug': (context) => const MapsDebugScreen(),
       },
     );

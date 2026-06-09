@@ -160,9 +160,7 @@ void main() {
     expect(find.text('Cancel'), findsOneWidget);
   });
 
-  testWidgets('opens support groups from home navbar', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('opens profile from home navbar', (WidgetTester tester) async {
     await tester.pumpWidget(const TutelaApp());
     await _finishSplash(tester);
 
@@ -173,19 +171,14 @@ void main() {
     await tester.tap(signInButton);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Support'));
+    await tester.tap(find.text('Profile'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Support groups'), findsOneWidget);
-    expect(find.text('Community layer'), findsOneWidget);
-    expect(find.text('Start a group'), findsOneWidget);
-    expect(find.text('Browse groups'), findsOneWidget);
-    expect(find.text('Edit'), findsWidgets);
-    expect(find.text('Archive'), findsWidgets);
-    expect(find.text('Delete'), findsWidgets);
-    expect(find.text('Create'), findsNothing);
-    expect(find.text('Read'), findsNothing);
-    expect(find.text('Update'), findsNothing);
+    expect(find.text('Profile'), findsWidgets);
+    expect(find.text('Account and safety preferences.'), findsOneWidget);
+    expect(find.text('Personal data'), findsOneWidget);
+    expect(find.text('Account security'), findsOneWidget);
+    expect(find.text('Privacy and data'), findsOneWidget);
   });
 
   testWidgets('opens report incident screen from map dashboard', (
