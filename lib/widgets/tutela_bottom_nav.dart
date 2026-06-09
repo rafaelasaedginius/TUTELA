@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 import '../theme/tutela_colors.dart';
 
 enum TutelaNavTab { map, route, home, circle, profile }

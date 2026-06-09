@@ -36,6 +36,16 @@ class UserService {
     return User.fromMap(doc.data()!, doc.id);
   }
 
+  Future<User?> getUserByEmail(String email) async {
+    final query = await _users
+        .where('email', isEqualTo: email)
+        .limit(1)
+        .get();
+    if (query.docs.isEmpty) return null;
+    final doc = query.docs.first;
+    return User.fromMap(doc.data(), doc.id);
+  }
+
   Future<void> updateUser(String uid, Map<String, dynamic> data) async {
     await _users.doc(uid).update({
       ...data,
@@ -43,10 +53,41 @@ class UserService {
     });
   }
 
-  Future<void> softDeleteUser(String uid) async {
-    await _users.doc(uid).update({
-      'isDeleted': true,
-      'updatedAt': Timestamp.now(),
-    });
+  Future<void> deleteUserCascade(String uid) async {
+    final userDoc = await _users.doc(uid).get();
+    final username = userDoc.exists
+        ? (userDoc.data()?['username'] as String?)
+        : null;
+
+    final contactsSnap =
+        await _users.doc(uid).collection('contacts').get();
+    for (final doc in contactsSnap.docs) {
+      await doc.reference.delete();
+    }
+
+    final routesSnap = await _firestore
+        .collection('safe_routes')
+        .where('creatorId', isEqualTo: uid)
+        .get();
+    for (final doc in routesSnap.docs) {
+      await doc.reference.delete();
+    }
+
+    final incidentsSnap = await _firestore
+        .collection('incidents')
+        .where('reporterId', isEqualTo: uid)
+        .get();
+    for (final doc in incidentsSnap.docs) {
+      await doc.reference.delete();
+    }
+
+    await _users.doc(uid).delete();
+
+    if (username != null && username.isNotEmpty) {
+      await _firestore
+          .collection('usernames')
+          .doc(username.toLowerCase())
+          .delete();
+    }
   }
 }
