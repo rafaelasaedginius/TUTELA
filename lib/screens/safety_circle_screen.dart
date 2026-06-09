@@ -1,6 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../models/emergency_contact_model.dart';
+import '../services/emergency_contact_service.dart';
 import '../theme/tutela_colors.dart';
 import '../widgets/tutela_bottom_nav.dart';
 
@@ -12,31 +16,31 @@ class SafetyCircleScreen extends StatefulWidget {
 }
 
 class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
-  String _priority = '1st';
-  String _emergencyHelp = 'None';
-  bool _checkInMode = true;
-  bool _includeHelpInMessage = true;
-  bool _showCallShortcut = true;
+  final EmergencyContactService _contactService = EmergencyContactService();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _relationshipController = TextEditingController();
 
-  bool get _usesHelp => _emergencyHelp != 'None';
-  bool get _usesCustomHelp => _emergencyHelp == 'Custom';
-  String get _assignedContact {
-    switch (_priority) {
-      case '1st':
-        return 'Mama';
-      case '2nd':
-        return 'Nadia';
-      case '3rd':
-        return 'Campus Security';
-      default:
-        return '';
-    }
+  int _priority = 1;
+  bool _notifyOnSos = true;
+  EmergencyContact? _editingContact;
+  bool _saving = false;
+
+  String? get _uid => fb.FirebaseAuth.instance.currentUser?.uid;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _relationshipController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final contentWidth = (size.width - 32).clamp(300.0, 430.0);
+    final uid = _uid;
 
     return Scaffold(
       backgroundColor: TutelaColors.canvas,
@@ -100,7 +104,7 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
                     const SizedBox(width: 10),
                     _CircleIconButton(
                       icon: Icons.local_police_outlined,
-                      onTap: _showPoliceCallSheet,
+                      onTap: () => _openDialer('110'),
                       filled: true,
                     ),
                   ],
@@ -108,282 +112,173 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
                 // Safety Circle Header End
                 const SizedBox(height: 18),
                 Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        // SOS Chain Summary Start
-                        _SosChainPanel(onSendSos: () {}),
-                        // SOS Chain Summary End
-                        const SizedBox(height: 14),
-                        // Contact List Section Start
-                        _CirclePanel(
-                          title: 'View contact list',
-                          subtitle:
-                              'Sorted by priority with last-pinged status.',
+                  child: uid == null
+                      ? const _SignedOutState()
+                      : SingleChildScrollView(
                           child: Column(
                             children: [
-                              const _ContactListItem(
-                                priority: '1st',
-                                name: 'Mama',
-                                detail: 'Family - pinged 4 min ago',
-                                emergencyHelp: 'No shortcut',
-                                showActions: true,
-                              ),
-                              const SizedBox(height: 10),
-                              const _ContactListItem(
-                                priority: '2nd',
-                                name: 'Nadia',
-                                detail: 'Friend - pinged yesterday',
-                                emergencyHelp: 'Call Campus Security',
-                                showActions: true,
-                              ),
-                              const SizedBox(height: 10),
-                              const _ContactListItem(
-                                priority: '3rd',
-                                name: 'Campus Security',
-                                detail: 'Local help point - helpline',
-                                emergencyHelp: 'Call shortcut',
-                                showActions: true,
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Contact List Section End
-                        const SizedBox(height: 14),
-                        // Add Contact Section Start
-                        _CirclePanel(
-                          title: 'Add contact',
-                          subtitle: 'Each priority slot holds one SOS contact.',
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _CircleTextField(hint: 'Full name'),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: _CircleTextField(hint: 'Phone'),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              _CircleTextField(hint: 'Relationship'),
-                              const SizedBox(height: 12),
-                              _CircleTextField(
-                                hint: 'Alert message template',
-                                maxLines: 3,
-                              ),
-                              const SizedBox(height: 14),
-                              _SectionLabel('Priority rank'),
-                              const SizedBox(height: 9),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _PriorityButton(
-                                      label: '1st',
-                                      selected: _priority == '1st',
-                                      onTap: () {
-                                        setState(() {
-                                          _priority = '1st';
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: _PriorityButton(
-                                      label: '2nd',
-                                      selected: _priority == '2nd',
-                                      onTap: () {
-                                        setState(() {
-                                          _priority = '2nd';
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: _PriorityButton(
-                                      label: '3rd',
-                                      selected: _priority == '3rd',
-                                      onTap: () {
-                                        setState(() {
-                                          _priority = '3rd';
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 14),
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(13),
-                                decoration: BoxDecoration(
-                                  color: TutelaColors.peach.withValues(
-                                    alpha: 0.14,
-                                  ),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  '$_priority priority is currently assigned to $_assignedContact. Saving this contact as $_priority will replace $_assignedContact in the SOS chain.',
-                                  style: GoogleFonts.dmSans(
-                                    color: TutelaColors.plum.withValues(
-                                      alpha: 0.72,
-                                    ),
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w500,
-                                    height: 1.25,
-                                    letterSpacing: 0,
-                                  ),
+                              // Contact List Section Start
+                              _CirclePanel(
+                                title: 'Emergency contact list',
+                                subtitle:
+                                    'Saved under users/{uid}/contacts/{id}.',
+                                child: StreamBuilder<List<EmergencyContact>>(
+                                  stream: _contactService.watchContacts(uid),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState ==
+                                            ConnectionState.waiting &&
+                                        !snapshot.hasData) {
+                                      return const Center(
+                                        child: Padding(
+                                          padding: EdgeInsets.all(14),
+                                          child: CircularProgressIndicator(
+                                            color: TutelaColors.plum,
+                                          ),
+                                        ),
+                                      );
+                                    }
+
+                                    final contacts = snapshot.data ?? [];
+                                    if (contacts.isEmpty) {
+                                      return const _EmptyContactState();
+                                    }
+
+                                    return Column(
+                                      children: [
+                                        for (final contact in contacts) ...[
+                                          _ContactListItem(
+                                            contact: contact,
+                                            onCall: () => _openDialer(
+                                              contact.phoneNumber,
+                                            ),
+                                            onEdit: () =>
+                                                _startEditing(contact),
+                                            onDelete: () => _confirmDelete(
+                                              uid: uid,
+                                              contact: contact,
+                                            ),
+                                          ),
+                                          if (contact != contacts.last)
+                                            const SizedBox(height: 10),
+                                        ],
+                                      ],
+                                    );
+                                  },
                                 ),
                               ),
+                              // Contact List Section End
                               const SizedBox(height: 14),
-                              _SectionLabel('Emergency call shortcut'),
-                              const SizedBox(height: 9),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  _HelpChoiceChip(
-                                    label: 'None',
-                                    selected: _emergencyHelp == 'None',
-                                    onTap: () {
-                                      setState(() {
-                                        _emergencyHelp = 'None';
-                                      });
-                                    },
-                                  ),
-                                  _HelpChoiceChip(
-                                    label: 'Campus Security',
-                                    selected:
-                                        _emergencyHelp == 'Campus Security',
-                                    onTap: () {
-                                      setState(() {
-                                        _emergencyHelp = 'Campus Security';
-                                      });
-                                    },
-                                  ),
-                                  _HelpChoiceChip(
-                                    label: 'Police Station',
-                                    selected:
-                                        _emergencyHelp == 'Police Station',
-                                    onTap: () {
-                                      setState(() {
-                                        _emergencyHelp = 'Police Station';
-                                      });
-                                    },
-                                  ),
-                                  _HelpChoiceChip(
-                                    label: 'Women Helpline',
-                                    selected:
-                                        _emergencyHelp == 'Women Helpline',
-                                    onTap: () {
-                                      setState(() {
-                                        _emergencyHelp = 'Women Helpline';
-                                      });
-                                    },
-                                  ),
-                                  _HelpChoiceChip(
-                                    label: 'Custom',
-                                    selected: _emergencyHelp == 'Custom',
-                                    onTap: () {
-                                      setState(() {
-                                        _emergencyHelp = 'Custom';
-                                      });
-                                    },
-                                  ),
-                                ],
-                              ),
-                              if (_usesHelp && !_usesCustomHelp) ...[
-                                const SizedBox(height: 12),
-                                _CircleTextField(
-                                  hint: '$_emergencyHelp phone number',
-                                ),
-                              ],
-                              if (_usesCustomHelp) ...[
-                                const SizedBox(height: 12),
-                                Row(
+                              // Create Update Contact Form Start
+                              _CirclePanel(
+                                title: _editingContact == null
+                                    ? 'Add contact'
+                                    : 'Edit contact',
+                                subtitle:
+                                    'Name, phone, relationship, priority, and SOS notification.',
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Expanded(
-                                      child: _CircleTextField(
-                                        hint: 'Help name',
-                                      ),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _CircleTextField(
+                                            controller: _nameController,
+                                            hint: 'Display name',
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: _CircleTextField(
+                                            controller: _phoneController,
+                                            hint: 'Phone number',
+                                            keyboardType: TextInputType.phone,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: _CircleTextField(
-                                        hint: 'Help phone',
-                                      ),
+                                    const SizedBox(height: 12),
+                                    _CircleTextField(
+                                      controller: _relationshipController,
+                                      hint: 'Relationship',
+                                    ),
+                                    const SizedBox(height: 14),
+                                    _SectionLabel('Priority'),
+                                    const SizedBox(height: 9),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _PriorityButton(
+                                            label: '1',
+                                            selected: _priority == 1,
+                                            onTap: () {
+                                              setState(() => _priority = 1);
+                                            },
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: _PriorityButton(
+                                            label: '2',
+                                            selected: _priority == 2,
+                                            onTap: () {
+                                              setState(() => _priority = 2);
+                                            },
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: _PriorityButton(
+                                            label: '3',
+                                            selected: _priority == 3,
+                                            onTap: () {
+                                              setState(() => _priority = 3);
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 14),
+                                    _NotifySwitch(
+                                      value: _notifyOnSos,
+                                      onChanged: (value) {
+                                        setState(() => _notifyOnSos = value);
+                                      },
+                                    ),
+                                    const SizedBox(height: 14),
+                                    Row(
+                                      children: [
+                                        if (_editingContact != null) ...[
+                                          Expanded(
+                                            child: _SecondaryCircleButton(
+                                              icon: Icons.close_rounded,
+                                              label: 'Cancel',
+                                              onTap: _clearForm,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                        ],
+                                        Expanded(
+                                          child: _PrimaryCircleButton(
+                                            label: _saving
+                                                ? 'Saving...'
+                                                : (_editingContact == null
+                                                      ? 'Save contact'
+                                                      : 'Update contact'),
+                                            onTap: _saving
+                                                ? () {}
+                                                : () => _saveContact(uid),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
-                              ],
-                              const SizedBox(height: 14),
-                              // SOS Help Settings Start
-                              _ToggleSettingRow(
-                                icon: Icons.sms_outlined,
-                                title: 'Include in SOS message',
-                                subtitle:
-                                    'Adds “please help call this number” to the alert.',
-                                value: _includeHelpInMessage,
-                                enabled: _usesHelp,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _includeHelpInMessage = value;
-                                  });
-                                },
                               ),
+                              // Create Update Contact Form End
                               const SizedBox(height: 12),
-                              _ToggleSettingRow(
-                                icon: Icons.phone_in_talk_outlined,
-                                title: 'Show call shortcut during SOS',
-                                subtitle:
-                                    'Shows a phone dial button on the SOS screen.',
-                                value: _showCallShortcut,
-                                enabled: _usesHelp,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _showCallShortcut = value;
-                                  });
-                                },
-                              ),
-                              const SizedBox(height: 12),
-                              _SosMessagePreviewBox(
-                                helpName: _emergencyHelp,
-                                includeHelp: _usesHelp && _includeHelpInMessage,
-                                showShortcut: _usesHelp && _showCallShortcut,
-                              ),
-                              const SizedBox(height: 14),
-                              // Check-in Mode Start
-                              _ToggleSettingRow(
-                                icon: Icons.check_circle_outline_rounded,
-                                title: 'Check-in mode',
-                                subtitle:
-                                    'Sends safety updates, not only SOS alerts.',
-                                value: _checkInMode,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _checkInMode = value;
-                                  });
-                                },
-                              ),
-                              // Check-in Mode End
-                              const SizedBox(height: 14),
-                              _PrimaryCircleButton(
-                                label: 'Save contact',
-                                onTap: () {},
-                              ),
                             ],
                           ),
                         ),
-                        // Add Contact Section End
-                        const SizedBox(height: 12),
-                      ],
-                    ),
-                  ),
                 ),
                 const SizedBox(height: 14),
                 // Bottom Navigation Start
@@ -398,305 +293,139 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
     );
   }
 
-  void _showPoliceCallSheet() {
-    showModalBottomSheet<void>(
+  Future<void> _saveContact(String uid) async {
+    final displayName = _nameController.text.trim();
+    final phoneNumber = _phoneController.text.trim();
+    final relationship = _relationshipController.text.trim();
+
+    if (displayName.isEmpty || phoneNumber.isEmpty || relationship.isEmpty) {
+      _showMessage('Please fill in all contact fields.');
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      final editingContact = _editingContact;
+      if (editingContact == null) {
+        await _contactService.addContact(
+          uid: uid,
+          displayName: displayName,
+          phoneNumber: phoneNumber,
+          relationship: relationship,
+          priority: _priority,
+          notifyOnSos: _notifyOnSos,
+        );
+      } else {
+        await _contactService.updateContact(
+          uid: uid,
+          contact: EmergencyContact(
+            id: editingContact.id,
+            displayName: displayName,
+            phoneNumber: phoneNumber,
+            relationship: relationship,
+            priority: _priority,
+            notifyOnSos: _notifyOnSos,
+            createdAt: editingContact.createdAt,
+            updatedAt: editingContact.updatedAt,
+          ),
+        );
+      }
+      _clearForm();
+      _showMessage('Emergency contact saved.');
+    } catch (_) {
+      _showMessage('Failed to save contact.');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  void _startEditing(EmergencyContact contact) {
+    setState(() {
+      _editingContact = contact;
+      _nameController.text = contact.displayName;
+      _phoneController.text = contact.phoneNumber;
+      _relationshipController.text = contact.relationship;
+      _priority = contact.priority;
+      _notifyOnSos = contact.notifyOnSos;
+    });
+  }
+
+  void _clearForm() {
+    setState(() {
+      _editingContact = null;
+      _nameController.clear();
+      _phoneController.clear();
+      _relationshipController.clear();
+      _priority = 1;
+      _notifyOnSos = true;
+    });
+  }
+
+  Future<void> _confirmDelete({
+    required String uid,
+    required EmergencyContact contact,
+  }) async {
+    final shouldDelete = await showDialog<bool>(
       context: context,
-      backgroundColor: TutelaColors.canvas,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
       builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(22, 18, 22, 22),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Police Call Sheet Start
-                Row(
-                  children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: TutelaColors.rose.withValues(alpha: 0.14),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.local_police_outlined,
-                        color: TutelaColors.plum,
-                        size: 23,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Call police',
-                            style: GoogleFonts.fraunces(
-                              color: TutelaColors.plum,
-                              fontSize: 25,
-                              fontWeight: FontWeight.w600,
-                              height: 1,
-                              letterSpacing: 0,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Emergency dial shortcut',
-                            style: GoogleFonts.dmSans(
-                              color: TutelaColors.plum.withValues(alpha: 0.58),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              height: 1,
-                              letterSpacing: 0,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'This will open the phone dialer with the police emergency number. You still confirm the call in the phone app.',
-                  style: GoogleFonts.dmSans(
-                    color: TutelaColors.plum.withValues(alpha: 0.7),
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w400,
-                    height: 1.35,
-                    letterSpacing: 0,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: TutelaColors.ivory.withValues(alpha: 0.32),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color: TutelaColors.plum.withValues(alpha: 0.1),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.phone_in_talk_outlined,
-                        color: TutelaColors.plum,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Police emergency number: 110',
-                          style: GoogleFonts.dmSans(
-                            color: TutelaColors.plum,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            height: 1,
-                            letterSpacing: 0,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _SecondaryCircleButton(
-                        icon: Icons.close_rounded,
-                        label: 'Cancel',
-                        onTap: () => Navigator.of(context).pop(),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _PrimaryCircleButton(
-                        label: 'Open dialer',
-                        onTap: () => Navigator.of(context).pop(),
-                      ),
-                    ),
-                  ],
-                ),
-                // Police Call Sheet End
-              ],
+        return AlertDialog(
+          backgroundColor: TutelaColors.canvas,
+          title: Text(
+            'Remove contact?',
+            style: GoogleFonts.fraunces(
+              color: TutelaColors.plum,
+              fontWeight: FontWeight.w600,
             ),
           ),
+          content: Text(
+            'Delete ${contact.displayName} from your emergency contacts?',
+            style: GoogleFonts.dmSans(color: TutelaColors.plum),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
         );
       },
     );
+
+    if (shouldDelete != true) return;
+
+    try {
+      await _contactService.deleteContact(uid: uid, contactId: contact.id);
+      if (_editingContact?.id == contact.id) _clearForm();
+      _showMessage('Emergency contact deleted.');
+    } catch (_) {
+      _showMessage('Failed to delete contact.');
+    }
   }
-}
 
-class _SosChainPanel extends StatelessWidget {
-  const _SosChainPanel({required this.onSendSos});
+  Future<void> _openDialer(String phoneNumber) async {
+    final cleanedNumber = phoneNumber.replaceAll(RegExp(r'\s+'), '');
+    if (cleanedNumber.isEmpty) {
+      _showMessage('Phone number is empty.');
+      return;
+    }
 
-  final VoidCallback onSendSos;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: TutelaColors.plum,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: TutelaColors.plum.withValues(alpha: 0.2),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // SOS Chain Header Start
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: TutelaColors.canvas.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.sos_rounded,
-                  color: TutelaColors.canvas,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'SOS alert chain',
-                      style: GoogleFonts.dmSans(
-                        color: TutelaColors.canvas,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        height: 1.1,
-                        letterSpacing: 0,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      'Alerts are sent from 1st to 3rd priority.',
-                      style: GoogleFonts.dmSans(
-                        color: TutelaColors.canvas.withValues(alpha: 0.8),
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w400,
-                        height: 1.15,
-                        letterSpacing: 0,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          // SOS Chain Header End
-          const SizedBox(height: 16),
-          const _ChainStep(
-            priority: '1st',
-            name: 'Mama',
-            detail: 'Receives live location first',
-          ),
-          const SizedBox(height: 10),
-          const _ChainStep(
-            priority: '2nd',
-            name: 'Nadia',
-            detail: 'SOS message asks her to call Campus Security',
-          ),
-          const SizedBox(height: 10),
-          const _ChainStep(
-            priority: '3rd',
-            name: 'Campus Security',
-            detail: 'Official local help point',
-          ),
-          const SizedBox(height: 16),
-          _LightCircleButton(label: 'Send SOS alert chain', onTap: onSendSos),
-        ],
-      ),
-    );
+    final uri = Uri(scheme: 'tel', path: cleanedNumber);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      _showMessage('Cannot open phone app.');
+    }
   }
-}
 
-class _ChainStep extends StatelessWidget {
-  const _ChainStep({
-    required this.priority,
-    required this.name,
-    required this.detail,
-  });
-
-  final String priority;
-  final String name;
-  final String detail;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 38,
-          height: 38,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: TutelaColors.canvas.withValues(alpha: 0.14),
-            shape: BoxShape.circle,
-          ),
-          child: Text(
-            priority,
-            style: GoogleFonts.dmSans(
-              color: TutelaColors.canvas,
-              fontSize: 11.5,
-              fontWeight: FontWeight.w800,
-              height: 1,
-              letterSpacing: 0,
-            ),
-          ),
-        ),
-        const SizedBox(width: 11),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                style: GoogleFonts.dmSans(
-                  color: TutelaColors.canvas,
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                  height: 1.1,
-                  letterSpacing: 0,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                detail,
-                style: GoogleFonts.dmSans(
-                  color: TutelaColors.canvas.withValues(alpha: 0.78),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                  height: 1.15,
-                  letterSpacing: 0,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -764,18 +493,16 @@ class _CirclePanel extends StatelessWidget {
 
 class _ContactListItem extends StatelessWidget {
   const _ContactListItem({
-    required this.priority,
-    required this.name,
-    required this.detail,
-    required this.emergencyHelp,
-    this.showActions = false,
+    required this.contact,
+    required this.onCall,
+    required this.onEdit,
+    required this.onDelete,
   });
 
-  final String priority;
-  final String name;
-  final String detail;
-  final String emergencyHelp;
-  final bool showActions;
+  final EmergencyContact contact;
+  final VoidCallback onCall;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -791,47 +518,47 @@ class _ContactListItem extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 38,
-                height: 38,
+                width: 40,
+                height: 40,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE2F7EE),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE2F7EE),
                   shape: BoxShape.circle,
                 ),
                 child: Text(
-                  priority,
+                  contact.priority.toString(),
                   style: GoogleFonts.dmSans(
                     color: const Color(0xFF3C8B68),
-                    fontSize: 11,
+                    fontSize: 14,
                     fontWeight: FontWeight.w800,
                     height: 1,
                     letterSpacing: 0,
                   ),
                 ),
               ),
-              const SizedBox(width: 11),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      name,
+                      contact.displayName,
                       style: GoogleFonts.dmSans(
                         color: TutelaColors.plum,
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
                         height: 1.1,
                         letterSpacing: 0,
                       ),
                     ),
                     const SizedBox(height: 5),
                     Text(
-                      detail,
+                      '${contact.relationship} - ${contact.phoneNumber}',
                       style: GoogleFonts.dmSans(
                         color: TutelaColors.plum.withValues(alpha: 0.58),
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
-                        height: 1.1,
+                        height: 1.15,
                         letterSpacing: 0,
                       ),
                     ),
@@ -841,14 +568,13 @@ class _ContactListItem extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
                 decoration: BoxDecoration(
-                  color: TutelaColors.canvas,
+                  color: contact.notifyOnSos
+                      ? const Color(0xFFE2F7EE)
+                      : TutelaColors.ivory.withValues(alpha: 0.28),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: TutelaColors.plum.withValues(alpha: 0.1),
-                  ),
                 ),
                 child: Text(
-                  emergencyHelp,
+                  contact.notifyOnSos ? 'SOS on' : 'SOS off',
                   style: GoogleFonts.dmSans(
                     color: const Color(0xFF3C8B68),
                     fontSize: 11,
@@ -860,48 +586,99 @@ class _ContactListItem extends StatelessWidget {
               ),
             ],
           ),
-          if (showActions) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _SecondaryCircleButton(
-                    icon: Icons.edit_outlined,
-                    label: 'Edit',
-                    onTap: () {},
-                  ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _SecondaryCircleButton(
+                  icon: Icons.phone_in_talk_outlined,
+                  label: 'Call',
+                  onTap: onCall,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _SecondaryCircleButton(
-                    icon: Icons.swap_vert_rounded,
-                    label: 'Priority',
-                    onTap: () {},
-                  ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _SecondaryCircleButton(
+                  icon: Icons.edit_outlined,
+                  label: 'Edit',
+                  onTap: onEdit,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _DangerCircleButton(label: 'Remove', onTap: () {}),
-                ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _DangerCircleButton(label: 'Delete', onTap: onDelete),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 }
 
-class _CircleTextField extends StatelessWidget {
-  const _CircleTextField({required this.hint, this.maxLines = 1});
+class _EmptyContactState extends StatelessWidget {
+  const _EmptyContactState();
 
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: TutelaColors.ivory.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Text(
+        'No emergency contacts yet. Add a contact below so you can call them quickly during an emergency.',
+        style: GoogleFonts.dmSans(
+          color: TutelaColors.plum.withValues(alpha: 0.68),
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          height: 1.3,
+          letterSpacing: 0,
+        ),
+      ),
+    );
+  }
+}
+
+class _SignedOutState extends StatelessWidget {
+  const _SignedOutState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        'Please sign in to manage emergency contacts.',
+        textAlign: TextAlign.center,
+        style: GoogleFonts.dmSans(
+          color: TutelaColors.plum.withValues(alpha: 0.68),
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          height: 1.3,
+          letterSpacing: 0,
+        ),
+      ),
+    );
+  }
+}
+
+class _CircleTextField extends StatelessWidget {
+  const _CircleTextField({
+    required this.controller,
+    required this.hint,
+    this.keyboardType,
+  });
+
+  final TextEditingController controller;
   final String hint;
-  final int maxLines;
+  final TextInputType? keyboardType;
 
   @override
   Widget build(BuildContext context) {
     return TextField(
-      maxLines: maxLines,
+      controller: controller,
+      keyboardType: keyboardType,
       cursorColor: TutelaColors.plum,
       style: GoogleFonts.dmSans(
         color: TutelaColors.plum,
@@ -933,233 +710,6 @@ class _CircleTextField extends StatelessWidget {
           borderRadius: BorderRadius.circular(22),
           borderSide: const BorderSide(color: TutelaColors.plum, width: 1.4),
         ),
-      ),
-    );
-  }
-}
-
-class _HelpChoiceChip extends StatelessWidget {
-  const _HelpChoiceChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? TutelaColors.plum : TutelaColors.canvas,
-          borderRadius: BorderRadius.circular(19),
-          border: Border.all(color: TutelaColors.plum, width: 1.2),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.dmSans(
-            color: selected ? TutelaColors.canvas : TutelaColors.plum,
-            fontSize: 12.5,
-            fontWeight: FontWeight.w600,
-            height: 1,
-            letterSpacing: 0,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ToggleSettingRow extends StatelessWidget {
-  const _ToggleSettingRow({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-    this.enabled = true,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    final textAlpha = enabled ? 1.0 : 0.42;
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: TutelaColors.ivory.withValues(alpha: 0.22),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: TutelaColors.plum.withValues(alpha: 0.1)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            color: TutelaColors.plum.withValues(alpha: enabled ? 1 : 0.42),
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.dmSans(
-                    color: TutelaColors.plum.withValues(alpha: textAlpha),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    height: 1,
-                    letterSpacing: 0,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.dmSans(
-                    color: TutelaColors.plum.withValues(
-                      alpha: enabled ? 0.58 : 0.36,
-                    ),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                    height: 1.15,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch(
-            value: enabled ? value : false,
-            activeThumbColor: TutelaColors.plum,
-            activeTrackColor: TutelaColors.rose.withValues(alpha: 0.28),
-            onChanged: enabled ? onChanged : null,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SosMessagePreviewBox extends StatelessWidget {
-  const _SosMessagePreviewBox({
-    required this.helpName,
-    required this.includeHelp,
-    required this.showShortcut,
-  });
-
-  final String helpName;
-  final bool includeHelp;
-  final bool showShortcut;
-
-  @override
-  Widget build(BuildContext context) {
-    final helpText = includeHelp
-        ? '\nPlease call $helpName now: [help phone]'
-        : '';
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: TutelaColors.rose.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: TutelaColors.rose.withValues(alpha: 0.12)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'SOS preview',
-            style: GoogleFonts.dmSans(
-              color: TutelaColors.plum,
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              height: 1,
-              letterSpacing: 0,
-            ),
-          ),
-          const SizedBox(height: 9),
-          Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: 'SOS! I need help immediately.\n',
-                  style: GoogleFonts.dmSans(
-                    color: TutelaColors.plum,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                    height: 1.3,
-                    letterSpacing: 0,
-                  ),
-                ),
-                TextSpan(
-                  text:
-                      'My location: [Share Location]$helpText\n'
-                      'Send help to my location ASAP.',
-                  style: GoogleFonts.dmSans(
-                    color: TutelaColors.plum.withValues(alpha: 0.72),
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w500,
-                    height: 1.3,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (showShortcut) ...[
-            const SizedBox(height: 12),
-            Container(
-              height: 40,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: TutelaColors.canvas,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: TutelaColors.plum, width: 1.2),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.phone_in_talk_outlined,
-                    color: TutelaColors.plum,
-                    size: 17,
-                  ),
-                  const SizedBox(width: 7),
-                  Flexible(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        'Call $helpName',
-                        style: GoogleFonts.dmSans(
-                          color: TutelaColors.plum,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          height: 1,
-                          letterSpacing: 0,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
       ),
     );
   }
@@ -1204,34 +754,64 @@ class _PriorityButton extends StatelessWidget {
   }
 }
 
-class _LightCircleButton extends StatelessWidget {
-  const _LightCircleButton({required this.label, required this.onTap});
+class _NotifySwitch extends StatelessWidget {
+  const _NotifySwitch({required this.value, required this.onChanged});
 
-  final String label;
-  final VoidCallback onTap;
+  final bool value;
+  final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        height: 48,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: TutelaColors.canvas,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.dmSans(
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: TutelaColors.ivory.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: TutelaColors.plum.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.notifications_active_outlined,
             color: TutelaColors.plum,
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            height: 1,
-            letterSpacing: 0,
+            size: 20,
           ),
-        ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Notify on SOS',
+                  style: GoogleFonts.dmSans(
+                    color: TutelaColors.plum,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    height: 1,
+                    letterSpacing: 0,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  'Include this contact in emergency alerts.',
+                  style: GoogleFonts.dmSans(
+                    color: TutelaColors.plum.withValues(alpha: 0.58),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    height: 1.15,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            activeThumbColor: TutelaColors.plum,
+            activeTrackColor: TutelaColors.rose.withValues(alpha: 0.28),
+            onChanged: onChanged,
+          ),
+        ],
       ),
     );
   }

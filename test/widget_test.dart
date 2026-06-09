@@ -130,9 +130,9 @@ void main() {
     expect(find.text('Emergency contacts'), findsOneWidget);
     expect(find.text('Personal safety layer'), findsOneWidget);
     expect(find.text('Add contact'), findsOneWidget);
-    expect(find.text('View contact list'), findsOneWidget);
-    expect(find.text('Edit'), findsWidgets);
-    expect(find.text('Remove'), findsWidgets);
+    expect(find.text('Emergency contact list'), findsOneWidget);
+    expect(find.text('Notify on SOS'), findsOneWidget);
+    expect(find.text('Save contact'), findsOneWidget);
   });
 
   testWidgets('opens sos confirmation from home', (WidgetTester tester) async {
