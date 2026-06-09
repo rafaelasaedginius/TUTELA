@@ -47,6 +47,7 @@ class EmergencyContactService {
     final now = Timestamp.now();
     final contact = EmergencyContact(
       id: '',
+      userId: uid,
       displayName: displayName,
       phoneNumber: phoneNumber,
       relationship: relationship,

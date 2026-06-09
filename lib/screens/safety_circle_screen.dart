@@ -320,6 +320,7 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
           uid: uid,
           contact: EmergencyContact(
             id: editingContact.id,
+            userId: editingContact.userId,
             displayName: displayName,
             phoneNumber: phoneNumber,
             relationship: relationship,

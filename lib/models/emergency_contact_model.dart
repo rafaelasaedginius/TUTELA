@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class EmergencyContact {
   const EmergencyContact({
     required this.id,
+    required this.userId,
     required this.displayName,
     required this.phoneNumber,
     required this.relationship,
@@ -13,6 +14,7 @@ class EmergencyContact {
   });
 
   final String id;
+  final String userId;
   final String displayName;
   final String phoneNumber;
   final String relationship;
@@ -24,6 +26,7 @@ class EmergencyContact {
   factory EmergencyContact.fromMap(Map<String, dynamic> map, String id) {
     return EmergencyContact(
       id: id,
+      userId: map['userId'] ?? '',
       displayName: map['displayName'] ?? '',
       phoneNumber: map['phoneNumber'] ?? '',
       relationship: map['relationship'] ?? '',
@@ -36,6 +39,7 @@ class EmergencyContact {
 
   Map<String, dynamic> toMap() {
     return {
+      'userId': userId,
       'displayName': displayName,
       'phoneNumber': phoneNumber,
       'relationship': relationship,
