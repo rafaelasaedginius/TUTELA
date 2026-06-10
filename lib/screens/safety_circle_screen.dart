@@ -8,6 +8,14 @@ import '../services/emergency_contact_service.dart';
 import '../theme/tutela_colors.dart';
 import '../widgets/tutela_bottom_nav.dart';
 
+/// Halaman Emergency Contacts.
+///
+/// Alur utama halaman ini:
+/// 1. Mengambil UID pengguna yang sedang login dari Firebase Authentication.
+/// 2. Mendengarkan daftar kontak milik UID tersebut secara real-time.
+/// 3. Menyediakan form untuk CREATE dan UPDATE kontak.
+/// 4. Menyediakan tombol Call, Edit, dan Delete untuk setiap kontak.
+/// 5. Tombol Call hanya membuka aplikasi Phone dengan nomor yang sudah terisi.
 class SafetyCircleScreen extends StatefulWidget {
   const SafetyCircleScreen({super.key});
 
@@ -16,16 +24,27 @@ class SafetyCircleScreen extends StatefulWidget {
 }
 
 class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
+  // Service menjadi penghubung antara UI dan koleksi Firestore.
   final EmergencyContactService _contactService = EmergencyContactService();
+
+  // Controller menyimpan teks yang sedang diketik pada form.
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _relationshipController = TextEditingController();
 
+  // State form. Priority boleh sama antara beberapa kontak.
   int _priority = 1;
   bool _notifyOnSos = true;
+
+  // Null berarti form sedang membuat kontak baru.
+  // Berisi EmergencyContact berarti form sedang mengedit kontak lama.
   EmergencyContact? _editingContact;
+
+  // Mencegah tombol Save ditekan berkali-kali ketika request belum selesai.
   bool _saving = false;
 
+  // UID menentukan lokasi data: users/{uid}/contacts/{contactId}.
+  // Jika null, pengguna belum login dan CRUD tidak boleh dijalankan.
   String? get _uid => fb.FirebaseAuth.instance.currentUser?.uid;
 
   @override
@@ -104,6 +123,8 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
                     const SizedBox(width: 10),
                     _CircleIconButton(
                       icon: Icons.local_police_outlined,
+                      // Nomor 110 dikirim ke Phone app, bukan langsung ditelepon
+                      // oleh Tutela. Pengguna tetap mengonfirmasi panggilan.
                       onTap: () => _openDialer('110'),
                       filled: true,
                     ),
@@ -120,11 +141,14 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
                               // Contact List Section Start
                               _CirclePanel(
                                 title: 'Emergency contact list',
-                                subtitle:
-                                    'People to contact in an emergency.',
+                                subtitle: 'People to contact in an emergency.',
+                                // READ: StreamBuilder otomatis membangun ulang
+                                // daftar saat data Firestore berubah.
                                 child: StreamBuilder<List<EmergencyContact>>(
                                   stream: _contactService.watchContacts(uid),
                                   builder: (context, snapshot) {
+                                    // Tampilkan loading hanya saat data pertama
+                                    // belum selesai diambil.
                                     if (snapshot.connectionState ==
                                             ConnectionState.waiting &&
                                         !snapshot.hasData) {
@@ -139,6 +163,8 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
                                     }
 
                                     final contacts = snapshot.data ?? [];
+                                    // Snapshot tanpa dokumen ditampilkan sebagai
+                                    // empty state, bukan sebagai error.
                                     if (contacts.isEmpty) {
                                       return const _EmptyContactState();
                                     }
@@ -148,11 +174,14 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
                                         for (final contact in contacts) ...[
                                           _ContactListItem(
                                             contact: contact,
+                                            // Membuka dialer dengan nomor kontak.
                                             onCall: () => _openDialer(
                                               contact.phoneNumber,
                                             ),
+                                            // Memindahkan data kontak ke form.
                                             onEdit: () =>
                                                 _startEditing(contact),
+                                            // Meminta konfirmasi sebelum DELETE.
                                             onDelete: () => _confirmDelete(
                                               uid: uid,
                                               contact: contact,
@@ -294,10 +323,12 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
   }
 
   Future<void> _saveContact(String uid) async {
+    // trim() menghapus spasi kosong di awal dan akhir input.
     final displayName = _nameController.text.trim();
     final phoneNumber = _phoneController.text.trim();
     final relationship = _relationshipController.text.trim();
 
+    // Validasi sederhana sebelum data dikirim ke Firebase.
     if (displayName.isEmpty || phoneNumber.isEmpty || relationship.isEmpty) {
       _showMessage('Please fill in all contact fields.');
       return;
@@ -306,7 +337,24 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
     setState(() => _saving = true);
     try {
       final editingContact = _editingContact;
+
+      // Satu nomor priority hanya boleh dimiliki oleh satu kontak.
+      // Saat UPDATE, ID kontak yang sedang diedit dikecualikan supaya pengguna
+      // tetap boleh menyimpan tanpa mengubah priority miliknya sendiri.
+      final priorityTaken = await _contactService.isPriorityTaken(
+        uid: uid,
+        priority: _priority,
+        excludedContactId: editingContact?.id,
+      );
+      if (priorityTaken) {
+        _showMessage(
+          'Priority $_priority is already used. Please choose another priority.',
+        );
+        return;
+      }
+
       if (editingContact == null) {
+        // CREATE: tidak ada kontak yang sedang diedit, jadi buat dokumen baru.
         await _contactService.addContact(
           uid: uid,
           displayName: displayName,
@@ -316,6 +364,9 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
           notifyOnSos: _notifyOnSos,
         );
       } else {
+        // UPDATE: gunakan ID dokumen lama agar tidak membuat duplikat.
+        // createdAt tetap memakai nilai lama, sedangkan updatedAt diperbarui
+        // oleh EmergencyContactService.
         await _contactService.updateContact(
           uid: uid,
           contact: EmergencyContact(
@@ -334,25 +385,23 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
       _clearForm();
       _showMessage('Emergency contact saved.');
     } catch (_) {
+      // Error Firebase ditangkap agar aplikasi tidak crash.
       _showMessage('Failed to save contact.');
     } finally {
+      // mounted dicek karena request async mungkin selesai setelah screen tutup.
       if (mounted) setState(() => _saving = false);
     }
   }
 
   void _goBack() {
-    // If opened via anonymous push (e.g. home quick action), pop normally.
-    // If opened via named route (bottom nav), replace with home to avoid
-    // revealing the getting-started screen that sits below in the stack.
-    final routeName = ModalRoute.of(context)?.settings.name;
-    if (routeName == null) {
-      Navigator.of(context).pop();
-    } else {
-      Navigator.of(context).pushReplacementNamed(TutelaRoutes.home);
-    }
+    // Selalu kembali ke Home dan mengganti route saat ini.
+    // Jangan memakai pop() di halaman utama navbar karena route di bawahnya
+    // bisa berupa Splash/Auth, sehingga terlihat seperti pengguna ter-logout.
+    Navigator.of(context).pushReplacementNamed(TutelaRoutes.home);
   }
 
   void _startEditing(EmergencyContact contact) {
+    // UPDATE preparation: isi form dengan nilai kontak yang dipilih.
     setState(() {
       _editingContact = contact;
       _nameController.text = contact.displayName;
@@ -364,6 +413,7 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
   }
 
   void _clearForm() {
+    // Mengembalikan form ke mode CREATE dan nilai awal.
     setState(() {
       _editingContact = null;
       _nameController.clear();
@@ -378,6 +428,7 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
     required String uid,
     required EmergencyContact contact,
   }) async {
+    // Dialog mengembalikan true jika Delete ditekan dan false/null jika batal.
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -411,7 +462,9 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
     if (shouldDelete != true) return;
 
     try {
+      // DELETE: hapus dokumen berdasarkan UID pemilik dan ID kontak.
       await _contactService.deleteContact(uid: uid, contactId: contact.id);
+      // Bersihkan form jika kontak yang dihapus sedang diedit.
       if (_editingContact?.id == contact.id) _clearForm();
       _showMessage('Emergency contact deleted.');
     } catch (_) {
@@ -420,14 +473,18 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
   }
 
   Future<void> _openDialer(String phoneNumber) async {
+    // Hilangkan spasi agar URI telepon valid, misalnya "0812 3456" menjadi
+    // "08123456". Nomor tidak diubah atau ditelepon otomatis.
     final cleanedNumber = phoneNumber.replaceAll(RegExp(r'\s+'), '');
     if (cleanedNumber.isEmpty) {
       _showMessage('Phone number is empty.');
       return;
     }
 
+    // URI tel: meminta sistem operasi membuka aplikasi Phone/dialer.
     final uri = Uri(scheme: 'tel', path: cleanedNumber);
     if (await canLaunchUrl(uri)) {
+      // externalApplication memastikan dialer dibuka di luar aplikasi Tutela.
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
       _showMessage('Cannot open phone app.');

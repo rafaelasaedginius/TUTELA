@@ -1,5 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// Bentuk data satu emergency contact di dalam aplikasi.
+///
+/// Model tidak berkomunikasi langsung dengan Firebase. Tugasnya hanya
+/// menyimpan data dan mengubah data Dart <-> Map Firestore.
 class EmergencyContact {
   const EmergencyContact({
     required this.id,
@@ -23,6 +27,10 @@ class EmergencyContact {
   final Timestamp createdAt;
   final Timestamp updatedAt;
 
+  /// Mengubah dokumen Firestore menjadi object EmergencyContact.
+  ///
+  /// Nilai default menjaga UI tetap dapat ditampilkan jika field lama belum
+  /// lengkap, tetapi Firestore rules tetap perlu memvalidasi data sebenarnya.
   factory EmergencyContact.fromMap(Map<String, dynamic> map, String id) {
     return EmergencyContact(
       id: id,
@@ -37,6 +45,7 @@ class EmergencyContact {
     );
   }
 
+  /// Dipakai saat CREATE karena seluruh field perlu disimpan.
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,
@@ -50,6 +59,10 @@ class EmergencyContact {
     };
   }
 
+  /// Dipakai saat UPDATE.
+  ///
+  /// id, userId, dan createdAt sengaja tidak ditimpa. updatedAt memakai waktu
+  /// terbaru agar perubahan terakhir dapat dilacak.
   Map<String, dynamic> toUpdateMap() {
     return {
       'displayName': displayName,
