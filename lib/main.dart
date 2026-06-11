@@ -12,11 +12,16 @@ import 'screens/safety_circle_screen.dart';
 import 'screens/splash_screen.dart';
 import 'theme/tutela_colors.dart';
 import 'widgets/tutela_bottom_nav.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
   await dotenv.load(fileName: '.env');
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  FlutterNativeSplash.remove();
   runApp(const TutelaApp());
 }
 
