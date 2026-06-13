@@ -27,6 +27,14 @@ class IncidentService {
         .toList());
   }
 
+  Stream<List<Incident>> streamActiveIncidents() {
+    return _incidents
+        .where('status', isEqualTo: 'active')
+        .snapshots()
+        .map((s) =>
+            s.docs.map((d) => Incident.fromMap(d.data(), d.id)).toList());
+  }
+
   Stream<List<Incident>> streamMyIncidents(String reporterId) {
     return _incidents
         .where('reporterId', isEqualTo: reporterId)

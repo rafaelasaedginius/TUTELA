@@ -146,6 +146,58 @@ class MapsService {
     return _decodePolyline(encoded);
   }
 
+  // ── Multiple routes with optional alternatives ───────────────────────────
+  // Returns each route as a decoded polyline list; index 0 is the primary route.
+
+  Future<List<List<GeoLocation>>> getRoutes({
+    required GeoLocation origin,
+    required GeoLocation destination,
+    bool computeAlternatives = false,
+  }) async {
+    final body = <String, dynamic>{
+      'origin': {
+        'location': {
+          'latLng': {
+            'latitude': origin.latitude,
+            'longitude': origin.longitude,
+          },
+        },
+      },
+      'destination': {
+        'location': {
+          'latLng': {
+            'latitude': destination.latitude,
+            'longitude': destination.longitude,
+          },
+        },
+      },
+      'travelMode': 'DRIVE',
+      'polylineQuality': 'OVERVIEW',
+      if (computeAlternatives) 'computeAlternativeRoutes': true,
+    };
+
+    final response = await http.post(
+      Uri.parse(_routes),
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': _apiKey,
+        'X-Goog-FieldMask': 'routes.polyline.encodedPolyline',
+      },
+      body: jsonEncode(body),
+    );
+    _assertOk(response);
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final routes = data['routes'] as List? ?? [];
+    if (routes.isEmpty) throw Exception('No route found');
+
+    return routes.map<List<GeoLocation>>((r) {
+      final encoded =
+          (r as Map)['polyline']['encodedPolyline'] as String;
+      return _decodePolyline(encoded);
+    }).toList();
+  }
+
   // ── Nearby search ─────────────────────────────────────────────────────────
   // Places API (new): POST, key in header, field mask required.
   // amenityType must be a valid Places type e.g. "hospital", "police", "fire_station".
