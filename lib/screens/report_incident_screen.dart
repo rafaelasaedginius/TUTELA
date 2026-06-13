@@ -26,7 +26,9 @@ class ReportIncidentScreen extends StatefulWidget {
   State<ReportIncidentScreen> createState() => _ReportIncidentScreenState();
 }
 
-class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
+class _ReportIncidentScreenState extends State<ReportIncidentScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   IncidentCategory _category = IncidentCategory.harassment;
   Severity _severity = Severity.medium;
 
@@ -42,11 +44,178 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   final List<_LocalAttachment> _attachments = [];
   bool _isSubmitting = false;
 
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  Severity? _severityFilter;
+  IncidentCategory? _categoryFilter;
+
+  List<Map<String, dynamic>> _nearbyResults = [];
+  bool _isSearchingNearby = false;
+  String? _nearbyError;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
   @override
   void dispose() {
+    _tabController.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _searchNearbyIncidents() async {
+    setState(() {
+      _isSearchingNearby = true;
+      _nearbyError = null;
+    });
+    try {
+      final current = await _mapsService.getCurrentLocation();
+      final results = await _mapsService.searchNearby(
+        location: current,
+        radiusMeters: 5000,
+        amenityType: _categoryToAmenityType(_categoryFilter),
+      );
+      setState(() => _nearbyResults = results);
+    } catch (e) {
+      setState(() => _nearbyError = 'Failed to search nearby places.');
+    } finally {
+      if (mounted) setState(() => _isSearchingNearby = false);
+    }
+  }
+
+  String? _categoryToAmenityType(IncidentCategory? category) {
+    if (category == null) return null;
+    switch (category) {
+      case IncidentCategory.harassment:
+      case IncidentCategory.stalking:
+      case IncidentCategory.assault:
+        return 'police';
+      case IncidentCategory.poorLighting:
+      case IncidentCategory.unsafeTransport:
+      case IncidentCategory.other:
+        return null;
+    }
+  }
+
+  bool _matchesFilters(Incident incident) {
+    if (_severityFilter != null && incident.severity != _severityFilter) {
+      return false;
+    }
+    if (_categoryFilter != null && incident.category != _categoryFilter) {
+      return false;
+    }
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      final inTitle = incident.title.toLowerCase().contains(q);
+      final inDesc = incident.description.toLowerCase().contains(q);
+      if (!inTitle && !inDesc) return false;
+    }
+    return true;
+  }
+
+  void _openCategoryFilter() async {
+    final selected = await showModalBottomSheet<IncidentCategory?>(
+      context: context,
+      backgroundColor: TutelaColors.canvas,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Filter by type',
+                  style: GoogleFonts.dmSans(
+                    color: TutelaColors.plum,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _SelectablePill(
+                      label: 'All',
+                      selected: _categoryFilter == null,
+                      onTap: () => Navigator.of(context).pop(),
+                    ),
+                    for (final c in IncidentCategory.values)
+                      _SelectablePill(
+                        label: c.label,
+                        selected: _categoryFilter == c,
+                        onTap: () => Navigator.of(context).pop(c),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    setState(() => _categoryFilter = selected);
+  }
+
+  void _openSeverityFilter() async {
+    final selected = await showModalBottomSheet<Severity?>(
+      context: context,
+      backgroundColor: TutelaColors.canvas,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Filter by severity',
+                  style: GoogleFonts.dmSans(
+                    color: TutelaColors.plum,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _SelectablePill(
+                      label: 'All',
+                      selected: _severityFilter == null,
+                      onTap: () => Navigator.of(context).pop(),
+                    ),
+                    for (final s in Severity.values)
+                      _SelectablePill(
+                        label: s.label,
+                        selected: _severityFilter == s,
+                        onTap: () => Navigator.of(context).pop(s),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    setState(() => _severityFilter = selected);
   }
 
   Future<void> _useCurrentLocation() async {
@@ -269,15 +438,40 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 14),
+                TabBar(
+                  controller: _tabController,
+                  labelStyle: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0,
+                  ),
+                  unselectedLabelStyle: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0,
+                  ),
+                  labelColor: TutelaColors.plum,
+                  unselectedLabelColor: TutelaColors.plum.withValues(alpha: 0.45),
+                  indicatorColor: TutelaColors.plum,
+                  indicatorSize: TabBarIndicatorSize.label,
+                  dividerColor: TutelaColors.plum.withValues(alpha: 0.1),
+                  tabs: const [
+                    Tab(text: 'File a report'),
+                    Tab(text: 'Reports'),
+                    Tab(text: 'My Reports'),
+                  ],
+                ),
+                const SizedBox(height: 4),
                 Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        _CrudPanel(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      SingleChildScrollView(
+                        padding: const EdgeInsets.only(top: 14, bottom: 12),
+                        child: _CrudPanel(
                           title: 'File a report',
-                          subtitle:
-                          'Pin a location and submit incident data.',
+                          subtitle: 'Pin a location and submit incident data.',
                           child: Column(
                             children: [
                               _PickerMap(
@@ -358,14 +552,10 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                 const SizedBox(height: 10),
                                 Column(
                                   children: [
-                                    for (var i = 0;
-                                    i < _attachments.length;
-                                    i++)
+                                    for (var i = 0; i < _attachments.length; i++)
                                       Padding(
                                         padding: EdgeInsets.only(
-                                          bottom: i == _attachments.length - 1
-                                              ? 0
-                                              : 8,
+                                          bottom: i == _attachments.length - 1 ? 0 : 8,
                                         ),
                                         child: _AttachmentChip(
                                           attachment: _attachments[i],
@@ -443,112 +633,180 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                               ),
                               const SizedBox(height: 16),
                               _PrimaryActionButton(
-                                label: _isSubmitting
-                                    ? 'Saving...'
-                                    : 'Save report',
+                                label: _isSubmitting ? 'Saving...' : 'Save report',
                                 onTap: _isSubmitting ? () {} : _submitReport,
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 14),
-                        _CrudPanel(
+                      ),
+                      SingleChildScrollView(
+                        padding: const EdgeInsets.only(top: 14, bottom: 12),
+                        child: _CrudPanel(
                           title: 'Browse map pins',
-                          subtitle:
-                          'View community reports and filter the safety layer.',
+                          subtitle: 'View community reports and filter the safety layer.',
                           child: Column(
                             children: [
+                              _ReportTextField(
+                                controller: _searchController,
+                                hint: 'Search by title or description',
+                              ),
+                              const SizedBox(height: 8),
                               Row(
                                 children: [
                                   Expanded(
-                                    child: _FilterChipBox(
-                                      icon: Icons.tune_rounded,
-                                      label: 'Type',
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _searchQuery = _searchController.text.trim();
+                                        });
+                                      },
+                                      child: _FilterChipBox(
+                                        icon: Icons.search_rounded,
+                                        label: 'Search',
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
-                                    child: _FilterChipBox(
-                                      icon: Icons.speed_rounded,
-                                      label: 'Severity',
+                                    child: GestureDetector(
+                                      onTap: _openCategoryFilter,
+                                      child: _FilterChipBox(
+                                        icon: Icons.tune_rounded,
+                                        label: _categoryFilter?.label ?? 'Type',
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
-                                    child: _FilterChipBox(
-                                      icon: Icons.social_distance_rounded,
-                                      label: '1-5 km',
+                                    child: GestureDetector(
+                                      onTap: _openSeverityFilter,
+                                      child: _FilterChipBox(
+                                        icon: Icons.speed_rounded,
+                                        label: _severityFilter?.label ?? 'Severity',
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
+                              const SizedBox(height: 8),
+                              GestureDetector(
+                                onTap: _isSearchingNearby ? null : _searchNearbyIncidents,
+                                child: Container(
+                                  height: 40,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: TutelaColors.canvas,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: TutelaColors.plum,
+                                      width: 1.3,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.near_me_rounded,
+                                        color: TutelaColors.plum,
+                                        size: 17,
+                                      ),
+                                      const SizedBox(width: 7),
+                                      Text(
+                                        _isSearchingNearby
+                                            ? 'Searching nearby...'
+                                            : 'Search nearby (5 km)',
+                                        style: GoogleFonts.dmSans(
+                                          color: TutelaColors.plum,
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              if (_nearbyError != null) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  _nearbyError!,
+                                  style: GoogleFonts.dmSans(
+                                    color: TutelaColors.rose,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                              if (_nearbyResults.isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                Column(
+                                  children: [
+                                    for (var i = 0; i < _nearbyResults.length; i++)
+                                      Padding(
+                                        padding: EdgeInsets.only(
+                                          bottom: i == _nearbyResults.length - 1 ? 0 : 10,
+                                        ),
+                                        child: _ReportListItem(
+                                          title: (_nearbyResults[i]['name'] ?? 'Unnamed Place') as String,
+                                          meta: (_nearbyResults[i]['formatted_address'] ?? '') as String,
+                                          status: 'Nearby',
+                                          statusColor: TutelaColors.plum.withValues(alpha: 0.6),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
                               const SizedBox(height: 12),
                               StreamBuilder<List<Incident>>(
                                 stream: _incidentService.streamIncidents(),
                                 builder: (context, snapshot) {
-                                  if (snapshot.connectionState ==
-                                      ConnectionState.waiting) {
+                                  if (snapshot.connectionState == ConnectionState.waiting) {
                                     return Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 18,
-                                      ),
+                                      padding: const EdgeInsets.symmetric(vertical: 18),
                                       child: Text(
                                         'Loading reports...',
                                         style: GoogleFonts.dmSans(
-                                          color: TutelaColors.plum.withValues(
-                                            alpha: 0.6,
-                                          ),
+                                          color: TutelaColors.plum.withValues(alpha: 0.6),
                                           fontSize: 13,
                                         ),
                                       ),
                                     );
                                   }
-                                  final incidents = snapshot.data ?? [];
+                                  final currentUid = fb.FirebaseAuth.instance.currentUser?.uid;
+                                  final incidents = (snapshot.data ?? [])
+                                      .where(_matchesFilters)
+                                      .where((i) => i.reporterId != currentUid)
+                                      .toList();
                                   if (incidents.isEmpty) {
                                     return Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 18,
-                                      ),
+                                      padding: const EdgeInsets.symmetric(vertical: 18),
                                       child: Text(
                                         'No reports yet.',
                                         style: GoogleFonts.dmSans(
-                                          color: TutelaColors.plum.withValues(
-                                            alpha: 0.6,
-                                          ),
+                                          color: TutelaColors.plum.withValues(alpha: 0.6),
                                           fontSize: 13,
                                         ),
                                       ),
                                     );
                                   }
-                                  final currentUid = fb
-                                      .FirebaseAuth.instance.currentUser?.uid;
                                   return Column(
                                     children: [
                                       for (var i = 0; i < incidents.length; i++)
                                         Padding(
                                           padding: EdgeInsets.only(
-                                            bottom: i == incidents.length - 1
-                                                ? 0
-                                                : 10,
+                                            bottom: i == incidents.length - 1 ? 0 : 10,
                                           ),
                                           child: _ReportListItem(
                                             title: incidents[i].title,
-                                            meta:
-                                            '${incidents[i].category.label} - ${incidents[i].severity.label}',
-                                            status: incidents[i].status.name,
-                                            statusColor:
-                                            incidents[i].severity.color,
-                                            showActions:
-                                            incidents[i].reporterId ==
-                                                currentUid,
-                                            onTap: () => _openIncidentDetail(
-                                              incidents[i],
-                                            ),
-                                            onEdit: () =>
-                                                _openEdit(incidents[i]),
-                                            onRemove: () => _confirmRemove(
-                                              incidents[i].id,
-                                            ),
+                                            meta: '${incidents[i].category.label} - ${incidents[i].severity.label}',
+                                            status: incidents[i].status.label,
+                                            statusColor: incidents[i].status.color,
+                                            categoryIcon: incidents[i].category.icon,
+                                            categoryColor: incidents[i].category.color,
+                                            showActions: false,
+                                            onTap: () => _openIncidentDetail(incidents[i]),
+                                            onEdit: () => _openEdit(incidents[i]),
+                                            onRemove: () => _confirmRemove(incidents[i].id),
                                           ),
                                         ),
                                     ],
@@ -558,9 +816,70 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
-                      ],
-                    ),
+                      ),
+                      SingleChildScrollView(
+                        padding: const EdgeInsets.only(top: 14, bottom: 12),
+                        child: _CrudPanel(
+                          title: 'My Reports',
+                          subtitle: 'Incidents you have submitted.',
+                          child: StreamBuilder<List<Incident>>(
+                            stream: _incidentService.streamIncidents(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 18),
+                                  child: Text(
+                                    'Loading reports...',
+                                    style: GoogleFonts.dmSans(
+                                      color: TutelaColors.plum.withValues(alpha: 0.6),
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                );
+                              }
+                              final currentUid = fb.FirebaseAuth.instance.currentUser?.uid;
+                              final myIncidents = (snapshot.data ?? [])
+                                  .where((i) => i.reporterId == currentUid)
+                                  .toList();
+                              if (myIncidents.isEmpty) {
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 18),
+                                  child: Text(
+                                    'You have not submitted any reports yet.',
+                                    style: GoogleFonts.dmSans(
+                                      color: TutelaColors.plum.withValues(alpha: 0.6),
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                );
+                              }
+                              return Column(
+                                children: [
+                                  for (var i = 0; i < myIncidents.length; i++)
+                                    Padding(
+                                      padding: EdgeInsets.only(
+                                        bottom: i == myIncidents.length - 1 ? 0 : 10,
+                                      ),
+                                      child: _ReportListItem(
+                                        title: myIncidents[i].title,
+                                        meta: '${myIncidents[i].category.label} - ${myIncidents[i].severity.label}',
+                                        status: myIncidents[i].status.label,
+                                        statusColor: myIncidents[i].status.color,
+                                        categoryIcon: myIncidents[i].category.icon,
+                                        categoryColor: myIncidents[i].category.color,
+                                        showActions: true,
+                                        onTap: () => _openIncidentDetail(myIncidents[i]),
+                                        onEdit: () => _openEdit(myIncidents[i]),
+                                        onRemove: () => _confirmRemove(myIncidents[i].id),
+                                      ),
+                                    ),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -1308,6 +1627,8 @@ class _ReportListItem extends StatelessWidget {
     required this.meta,
     required this.status,
     this.statusColor,
+    this.categoryIcon,
+    this.categoryColor,
     this.showActions = false,
     this.onTap,
     this.onEdit,
@@ -1318,6 +1639,8 @@ class _ReportListItem extends StatelessWidget {
   final String meta;
   final String status;
   final Color? statusColor;
+  final IconData? categoryIcon;
+  final Color? categoryColor;
   final bool showActions;
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
@@ -1343,12 +1666,12 @@ class _ReportListItem extends StatelessWidget {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: TutelaColors.rose.withValues(alpha: 0.18),
+                    color: (categoryColor ?? TutelaColors.rose).withValues(alpha: 0.18),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.location_on_outlined,
-                    color: TutelaColors.plum,
+                  child: Icon(
+                    categoryIcon ?? Icons.location_on_outlined,
+                    color: categoryColor ?? TutelaColors.plum,
                     size: 21,
                   ),
                 ),

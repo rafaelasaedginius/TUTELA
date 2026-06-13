@@ -42,9 +42,6 @@ dependencies:
   flutter_dotenv: ^6.0.1
   flutter_map: ^8.3.0
   latlong2: ^0.9.1
-
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   firebase_core: ^4.9.0
   firebase_auth: ^6.5.1
@@ -68,12 +65,18 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/images/TUTELA.png"
+  image_path: "assets/images/Tutela2.png"
+  adaptive_icon_background: "#512DA8"
+  adaptive_icon_foreground: "assets/images/Tutela2.png"
+
 flutter_native_splash:
   color: "#512DA8"
-  image: "assets/images/TUTELA.png"
+  image: "assets/images/Tutela2.png"
   android: true
   ios: true
+  android_12:
+    color: "#512DA8"
+    image: "assets/images/Tutela2.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

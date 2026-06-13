@@ -15,6 +15,7 @@ class Incident {
   final List<Attachment> attachments;
   final Timestamp occurredAt;
   final int verifiedCount;
+  final List<String> verifiedBy;
   final IncidentStatus status;
   final Timestamp createdAt;
   final Timestamp updatedAt;
@@ -31,6 +32,7 @@ class Incident {
     this.attachments = const [],
     required this.occurredAt,
     this.verifiedCount = 0,
+    this.verifiedBy = const [],
     this.status = IncidentStatus.active,
     required this.createdAt,
     required this.updatedAt,
@@ -54,6 +56,7 @@ class Incident {
           [],
       occurredAt: map['occurredAt'] ?? Timestamp.now(),
       verifiedCount: map['verifiedCount'] ?? 0,
+      verifiedBy: (map['verifiedBy'] as List<dynamic>?)?.cast<String>() ?? [],
       status: IncidentStatus.values.byName(map['status'] ?? 'active'),
       createdAt: map['createdAt'] ?? Timestamp.now(),
       updatedAt: map['updatedAt'] ?? Timestamp.now(),
@@ -72,6 +75,7 @@ class Incident {
       'attachments': attachments.map((e) => e.toMap()).toList(),
       'occurredAt': occurredAt,
       'verifiedCount': verifiedCount,
+      'verifiedBy': verifiedBy,
       'status': status.name,
       'createdAt': createdAt,
       'updatedAt': updatedAt,

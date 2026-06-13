@@ -32,7 +32,7 @@ class IncidentService {
         .where('status', isEqualTo: 'active')
         .snapshots()
         .map((s) =>
-            s.docs.map((d) => Incident.fromMap(d.data(), d.id)).toList());
+        s.docs.map((d) => Incident.fromMap(d.data(), d.id)).toList());
   }
 
   Stream<List<Incident>> streamMyIncidents(String reporterId) {
@@ -54,5 +54,40 @@ class IncidentService {
 
   Future<void> deleteIncident(String id) async {
     await _incidents.doc(id).delete();
+  }
+
+  /// Marks incident [id] as resolved.
+  Future<void> resolveIncident(String id) async {
+    await updateIncident(id, {'status': 'resolved'});
+  }
+
+  /// Toggles verification for [userId] on incident [id].
+  /// Adds the user to verifiedBy and increments verifiedCount if not yet
+  /// verified, otherwise removes them and decrements the count.
+  Future<void> toggleVerify(String id, String userId) async {
+    final docRef = _incidents.doc(id);
+    await _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(docRef);
+      if (!snapshot.exists) return;
+      final data = snapshot.data() as Map<String, dynamic>;
+      final verifiedBy =
+          (data['verifiedBy'] as List<dynamic>?)?.cast<String>() ?? [];
+      final verifiedCount = (data['verifiedCount'] as int?) ?? 0;
+
+      if (verifiedBy.contains(userId)) {
+        transaction.update(docRef, {
+          'verifiedBy': FieldValue.arrayRemove([userId]),
+          'verifiedCount':
+          verifiedCount > 0 ? verifiedCount - 1 : 0,
+          'updatedAt': Timestamp.now(),
+        });
+      } else {
+        transaction.update(docRef, {
+          'verifiedBy': FieldValue.arrayUnion([userId]),
+          'verifiedCount': verifiedCount + 1,
+          'updatedAt': Timestamp.now(),
+        });
+      }
+    });
   }
 }

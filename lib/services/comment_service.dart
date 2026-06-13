@@ -11,6 +11,8 @@ class CommentService {
   Future<Comment> createComment({
     required String body,
     required String authorId,
+    required String authorName,
+    String? authorAvatarUrl,
     required String incidentId,
   }) async {
     final now = Timestamp.now();
@@ -18,6 +20,8 @@ class CommentService {
     final docRef = await _commentsRef.add({
       'body': body,
       'authorId': authorId,
+      'authorName': authorName,
+      'authorAvatarUrl': authorAvatarUrl,
       'incidentId': incidentId,
       'createdAt': now,
       'updatedAt': now,
@@ -27,6 +31,8 @@ class CommentService {
       id: docRef.id,
       body: body,
       authorId: authorId,
+      authorName: authorName,
+      authorAvatarUrl: authorAvatarUrl,
       incidentId: incidentId,
       createdAt: now,
       updatedAt: now,

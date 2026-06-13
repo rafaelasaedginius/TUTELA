@@ -28,7 +28,6 @@ class _EditIncidentScreenState extends State<EditIncidentScreen> {
   late final TextEditingController _descriptionController;
   late IncidentCategory _category;
   late Severity _severity;
-  late IncidentStatus _status;
   late GeoLocation _location;
   bool _isSaving = false;
 
@@ -40,7 +39,6 @@ class _EditIncidentScreenState extends State<EditIncidentScreen> {
     _descriptionController = TextEditingController(text: i.description);
     _category = i.category;
     _severity = i.severity;
-    _status = i.status;
     _location = i.location;
   }
 
@@ -101,7 +99,6 @@ class _EditIncidentScreenState extends State<EditIncidentScreen> {
         'description': description,
         'category': _category.name,
         'severity': _severity.name,
-        'status': _status.name,
         'location': _location.toMap(),
       });
       if (!mounted) return;
@@ -296,22 +293,6 @@ class _EditIncidentScreenState extends State<EditIncidentScreen> {
                               ),
                             ),
                           ],
-                        ),
-                        const SizedBox(height: 14),
-                        _Label('Status'),
-                        const SizedBox(height: 9),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: IncidentStatus.values
-                              .map(
-                                (s) => _Pill(
-                              label: s.name,
-                              selected: _status == s,
-                              onTap: () => setState(() => _status = s),
-                            ),
-                          )
-                              .toList(),
                         ),
                         const SizedBox(height: 18),
                         GestureDetector(

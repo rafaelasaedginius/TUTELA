@@ -28,4 +28,12 @@ enum Severity {
   bool get isUrgent => weight >= 3;
 }
 
-enum IncidentStatus { active, resolved, flagged, archived }
+enum IncidentStatus {
+  active('Active', Icons.error_outline_rounded, Color(0xFFB23A48)),
+  resolved('Resolved', Icons.check_circle_outline_rounded, Color(0xFF6FAE6F));
+
+  const IncidentStatus(this.label, this.icon, this.color);
+  final String label;
+  final IconData icon;
+  final Color color;
+}
