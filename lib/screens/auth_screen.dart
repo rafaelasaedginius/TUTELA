@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import '../services/user_service.dart';
 import '../theme/tutela_colors.dart';
 import '../widgets/tutela_button.dart';
+import 'forgot_password_screen.dart';
 import 'home_screen.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -696,18 +697,35 @@ class _AuthFields extends StatelessWidget {
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerRight,
-            child: Text(
-              'Forgot password?',
-              style: GoogleFonts.dmSans(
-                color: TutelaColors.plum,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                height: 1.2,
-                letterSpacing: 0,
-                decoration: TextDecoration.underline,
-                decorationColor: TutelaColors.plum,
+            // Forgot Password Navigation Start
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (context) => ForgotPasswordScreen(
+                      initialEmail: emailController.text,
+                    ),
+                  ),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Text(
+                  'Forgot password?',
+                  style: GoogleFonts.dmSans(
+                    color: TutelaColors.plum,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    height: 1.2,
+                    letterSpacing: 0,
+                    decoration: TextDecoration.underline,
+                    decorationColor: TutelaColors.plum,
+                  ),
+                ),
               ),
             ),
+            // Forgot Password Navigation End
           ),
         ],
       ],

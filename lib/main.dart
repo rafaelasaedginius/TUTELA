@@ -10,6 +10,7 @@ import 'screens/profile_screen.dart';
 import 'screens/safe_route_planner_screen.dart';
 import 'screens/safety_circle_screen.dart';
 import 'screens/splash_screen.dart';
+import 'services/notification_service.dart';
 import 'theme/tutela_colors.dart';
 import 'widgets/tutela_bottom_nav.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -20,6 +21,7 @@ void main() async {
 
   await dotenv.load(fileName: '.env');
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await NotificationService.initialize();
 
   FlutterNativeSplash.remove();
   runApp(const TutelaApp());
@@ -31,6 +33,7 @@ class TutelaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: NotificationService.navigatorKey,
       title: 'Tutela',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -47,6 +50,12 @@ class TutelaApp extends StatelessWidget {
         TutelaRoutes.circle: (context) => const SafetyCircleScreen(),
         TutelaRoutes.profile: (context) => const ProfileScreen(),
         '/maps-debug': (context) => const MapsDebugScreen(),
+      },
+      builder: (context, child) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          NotificationService.openPendingIncidentIfNeeded();
+        });
+        return child ?? const SizedBox.shrink();
       },
     );
   }

@@ -886,47 +886,6 @@ class _DetailTextLine extends StatelessWidget {
   }
 }
 
-class _PhotoPreview extends StatelessWidget {
-  const _PhotoPreview({required this.index});
-
-  final String index;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        height: 64,
-        decoration: BoxDecoration(
-          color: TutelaColors.peach.withValues(alpha: 0.22),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: TutelaColors.plum.withValues(alpha: 0.1)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.image_outlined,
-              color: TutelaColors.plum,
-              size: 20,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Photo $index',
-              style: GoogleFonts.dmSans(
-                color: TutelaColors.plum.withValues(alpha: 0.65),
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                height: 1,
-                letterSpacing: 0,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _DetailActionButton extends StatelessWidget {
   const _DetailActionButton({
     required this.label,

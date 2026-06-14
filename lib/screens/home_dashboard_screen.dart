@@ -6,17 +6,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/geo_location_model.dart';
 import '../models/incident_model.dart';
 import '../models/safe_route_model.dart';
+import '../services/emergency_contact_service.dart';
 import '../services/incident_service.dart';
 import '../services/maps_service.dart';
 import '../services/safe_route_service.dart';
 import '../services/user_service.dart';
 import '../theme/tutela_colors.dart';
 import 'report_incident_screen.dart';
-import 'sos_confirmation_screen.dart';
 import '../widgets/tutela_bottom_nav.dart';
 
 class HomeDashboardScreen extends StatefulWidget {
@@ -1072,7 +1073,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                               label: 'SOS',
                               icon: Icons.sos_rounded,
                               filled: true,
-                              onTap: () => _openSosConfirmation(context),
+                              onTap: () => _triggerSos(context),
                             ),
                           ),
                         ]),
@@ -1098,11 +1099,31 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     );
   }
 
-  void _openSosConfirmation(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-          builder: (context) => const SosConfirmationScreen()),
-    );
+  Future<void> _triggerSos(BuildContext context) async {
+    final uid = fb.FirebaseAuth.instance.currentUser?.uid;
+
+    String? phoneNumber;
+    if (uid != null) {
+      try {
+        final contacts = await EmergencyContactService().getContacts(uid);
+        if (contacts.isNotEmpty) {
+          phoneNumber = contacts.first.phoneNumber;
+        }
+      } catch (_) {}
+    }
+
+    phoneNumber ??= '110';
+
+    final cleaned = phoneNumber.replaceAll(RegExp(r'\s+'), '');
+    final uri = Uri(scheme: 'tel', path: cleaned);
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot open phone app.')),
+      );
+    }
   }
 }
 
