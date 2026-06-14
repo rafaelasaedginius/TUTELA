@@ -454,6 +454,24 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
                         ],
                         // Detail Status Row End
                         const SizedBox(height: 14),
+                        // Detail Description Start
+                        _DetailPanel(
+                          title: 'Description',
+                          child: Text(
+                            incident.description.isNotEmpty
+                                ? incident.description
+                                : 'No description provided.',
+                            style: GoogleFonts.dmSans(
+                              color: TutelaColors.plum.withValues(alpha: 0.85),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              height: 1.5,
+                              letterSpacing: 0,
+                            ),
+                          ),
+                        ),
+                        // Detail Description End
+                        const SizedBox(height: 14),
                         // Detail Location Start
                         _DetailPanel(
                           title: 'Pinned location',
@@ -882,6 +900,47 @@ class _DetailTextLine extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _PhotoPreview extends StatelessWidget {
+  const _PhotoPreview({required this.index});
+
+  final String index;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        height: 64,
+        decoration: BoxDecoration(
+          color: TutelaColors.peach.withValues(alpha: 0.22),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: TutelaColors.plum.withValues(alpha: 0.1)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.image_outlined,
+              color: TutelaColors.plum,
+              size: 20,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Photo $index',
+              style: GoogleFonts.dmSans(
+                color: TutelaColors.plum.withValues(alpha: 0.65),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                height: 1,
+                letterSpacing: 0,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
