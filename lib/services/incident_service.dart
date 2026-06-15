@@ -18,6 +18,17 @@ class IncidentService {
     return Incident.fromMap(doc.data()!, doc.id);
   }
 
+  Future<List<Incident>> getActiveIncidentsFiltered(String? category) async {
+    var query = _incidents.where('status', isEqualTo: 'active');
+    if (category != null && category.isNotEmpty) {
+      query = query.where('category', isEqualTo: category);
+    }
+    final snapshot = await query.get();
+    return snapshot.docs
+        .map((doc) => Incident.fromMap(doc.data(), doc.id))
+        .toList();
+  }
+
   Stream<List<Incident>> streamIncidents() {
     return _incidents
         .orderBy('createdAt', descending: true)

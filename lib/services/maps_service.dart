@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:tutela/models/geo_location_model.dart';
+import 'package:tutela/services/incident_service.dart';
 
 // Google Geocoding docs    : https://developers.google.com/maps/documentation/geocoding
 // Google Places (New) docs : https://developers.google.com/maps/documentation/places/web-service/op-overview
@@ -248,6 +250,51 @@ class MapsService {
       });
     }
     return results;
+  }
+
+  // ── Nearby search for incident reports ─────────────────────────────────────────────────────────
+  // Use incident reports from firebase
+  Future<List<Map<String, dynamic>>> searchNearbyIncidents({
+    required GeoLocation currentLocation,
+    required double radiusMeters,
+  }) async {
+    final activeIncidents =
+        await IncidentService().getActiveIncidentsFiltered(null);
+
+    const metersPerDeg = 111320.0;
+    final cosLat =
+        math.cos(currentLocation.latitude * math.pi / 180);
+
+    final nearby = <Map<String, dynamic>>[];
+    for (final incident in activeIncidents) {
+      final dLat = (incident.location.latitude - currentLocation.latitude) *
+          metersPerDeg;
+      final dLng =
+          (incident.location.longitude - currentLocation.longitude) *
+              metersPerDeg *
+              cosLat;
+      final distM = math.sqrt(dLat * dLat + dLng * dLng);
+      if (distM <= radiusMeters) {
+        final address = incident.location.address;
+        nearby.add({
+          'name': incident.title,
+          'formatted_address': address != null && address.isNotEmpty
+              ? address
+              : '${incident.location.latitude.toStringAsFixed(4)}, '
+                  '${incident.location.longitude.toStringAsFixed(4)}',
+          'latitude': incident.location.latitude,
+          'longitude': incident.location.longitude,
+          'place_id': incident.id,
+          'distance_meters': distM.round(),
+          'category': incident.category.name,
+          'severity': incident.severity.name,
+        });
+      }
+    }
+
+    nearby.sort((a, b) =>
+        (a['distance_meters'] as int).compareTo(b['distance_meters'] as int));
+    return nearby;
   }
 
   // ── Places text search ────────────────────────────────────────────────────

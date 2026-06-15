@@ -75,30 +75,15 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen>
     });
     try {
       final current = await _mapsService.getCurrentLocation();
-      final results = await _mapsService.searchNearby(
-        location: current,
+      final results = await _mapsService.searchNearbyIncidents(
+        currentLocation: current,
         radiusMeters: 5000,
-        amenityType: _categoryToAmenityType(_categoryFilter),
       );
       setState(() => _nearbyResults = results);
     } catch (e) {
       setState(() => _nearbyError = 'Failed to search nearby places.');
     } finally {
       if (mounted) setState(() => _isSearchingNearby = false);
-    }
-  }
-
-  String? _categoryToAmenityType(IncidentCategory? category) {
-    if (category == null) return null;
-    switch (category) {
-      case IncidentCategory.harassment:
-      case IncidentCategory.stalking:
-      case IncidentCategory.assault:
-        return 'police';
-      case IncidentCategory.poorLighting:
-      case IncidentCategory.unsafeTransport:
-      case IncidentCategory.other:
-        return null;
     }
   }
 
@@ -737,25 +722,43 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen>
                                   ),
                                 ),
                               ],
-                              if (_nearbyResults.isNotEmpty) ...[
-                                const SizedBox(height: 12),
-                                Column(
+                              Builder(builder: (ctx) {
+                                if (_nearbyResults.isEmpty) {
+                                  return const SizedBox.shrink();
+                                }
+                                final displayed = _nearbyResults.where((r) {
+                                  if (_categoryFilter != null &&
+                                      r['category'] != _categoryFilter!.name) {
+                                    return false;
+                                  }
+                                  if (_severityFilter != null &&
+                                      r['severity'] != _severityFilter!.name) {
+                                    return false;
+                                  }
+                                  return true;
+                                }).toList();
+                                if (displayed.isEmpty) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Column(
                                   children: [
-                                    for (var i = 0; i < _nearbyResults.length; i++)
+                                    const SizedBox(height: 12),
+                                    for (var i = 0; i < displayed.length; i++)
                                       Padding(
                                         padding: EdgeInsets.only(
-                                          bottom: i == _nearbyResults.length - 1 ? 0 : 10,
+                                          bottom: i == displayed.length - 1 ? 0 : 10,
                                         ),
                                         child: _ReportListItem(
-                                          title: (_nearbyResults[i]['name'] ?? 'Unnamed Place') as String,
-                                          meta: (_nearbyResults[i]['formatted_address'] ?? '') as String,
+                                          title: (displayed[i]['name'] ?? 'Unnamed Place') as String,
+                                          meta: '${((displayed[i]['distance_meters'] as int) / 1000).toStringAsFixed(1)} km away'
+                                              '${(displayed[i]['formatted_address'] as String?)?.isNotEmpty == true ? ' · ${displayed[i]['formatted_address']}' : ''}',
                                           status: 'Nearby',
                                           statusColor: TutelaColors.plum.withValues(alpha: 0.6),
                                         ),
                                       ),
                                   ],
-                                ),
-                              ],
+                                );
+                              }),
                               const SizedBox(height: 12),
                               StreamBuilder<List<Incident>>(
                                 stream: _incidentService.streamIncidents(),
