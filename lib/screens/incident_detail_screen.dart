@@ -13,6 +13,7 @@ import '../models/comment_model.dart';
 import '../models/incident_model.dart';
 import '../models/incident_enums.dart';
 import '../models/attachment_model.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import '../services/comment_service.dart';
 import '../services/incident_service.dart';
 import '../services/user_service.dart';
@@ -101,7 +102,8 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
           updatedAt: incident.updatedAt,
         );
       });
-    } catch (e) {
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to update verification.')),
       );
@@ -133,7 +135,8 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
           updatedAt: incident.updatedAt,
         );
       });
-    } catch (e) {
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to update status.')),
       );
@@ -171,7 +174,8 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
         incidentId: incident.id,
       );
       _commentController.clear();
-    } catch (e) {
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to post comment.')),);
     } finally {
       if (mounted) setState(() => _isPostingComment = false);
@@ -204,7 +208,8 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
     try {
       await _commentService.updateComment(commentId: commentId, newBody: newBody);
       _cancelEditComment();
-    } catch (e) {
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to update comment.')),
       );
@@ -240,7 +245,8 @@ class _IncidentDetailScreenState extends State<IncidentDetailScreen> {
     if (confirm == true) {
       try {
         await _commentService.deleteComment(commentId);
-      } catch (e) {
+      } catch (e, s) {
+        FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to delete comment.')),
         );

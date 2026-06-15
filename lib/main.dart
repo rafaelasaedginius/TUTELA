@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -14,6 +15,7 @@ import 'services/notification_service.dart';
 import 'theme/tutela_colors.dart';
 import 'widgets/tutela_bottom_nav.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +26,16 @@ void main() async {
   await NotificationService.initialize();
 
   FlutterNativeSplash.remove();
+
+  // Pass all uncaught "fatal" errors from the framework to Crashlytics
+  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+
+  // Pass all uncaught async errors outside of the Flutter framework to Crashlytics
+  PlatformDispatcher.instance.onError = (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    return true;
+  };
+
   runApp(const TutelaApp());
 }
 

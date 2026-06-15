@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import '../services/auth_service.dart';
 import '../theme/tutela_colors.dart';
 import '../widgets/tutela_button.dart';
@@ -56,7 +57,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       setState(() => _emailSent = true);
     } on fb.FirebaseAuthException catch (error) {
       _showMessage(_firebaseErrorMessage(error));
-    } catch (_) {
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
       _showMessage('Could not send the reset link. Please try again.');
     } finally {
       if (mounted) setState(() => _isSending = false);

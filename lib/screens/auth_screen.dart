@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import '../models/auth_mode.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
@@ -277,6 +278,8 @@ class _AuthScreenState extends State<AuthScreen>
                                     alpha: 0.33,
                                   ),
                                   onPressed: _isLoading ? () {} : _submit,
+                                  // Temporary crash test for Crashlytics verification. Remove the intentional crash after confirming it's working.
+                                  // onPressed: () => throw Exception(),
                                 ),
                                 const SizedBox(height: 18),
                                 GestureDetector(
@@ -411,10 +414,12 @@ class _AuthScreenState extends State<AuthScreen>
       );
       await _userService.createUser(user);
 
+      await FirebaseCrashlytics.instance.setUserIdentifier(fbUser.uid);
       _openHome();
     } on fb.FirebaseAuthException catch (e) {
       _showMessage(e.message ?? 'Registration failed.');
-    } catch (e) {
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
       _showMessage('Registration failed. Please try again.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -432,11 +437,13 @@ class _AuthScreenState extends State<AuthScreen>
 
     setState(() => _isLoading = true);
     try {
-      await _authService.signIn(email: email, password: password);
+      final fbUser = await _authService.signIn(email: email, password: password);
+      await FirebaseCrashlytics.instance.setUserIdentifier(fbUser.uid);
       _openHome();
     } on fb.FirebaseAuthException catch (e) {
       _showMessage(e.message ?? 'Sign in failed.');
-    } catch (e) {
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
       _showMessage('Sign in failed. Please try again.');
     } finally {
       if (mounted) setState(() => _isLoading = false);

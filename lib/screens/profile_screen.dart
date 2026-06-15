@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/user_model.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import '../services/auth_service.dart';
 import '../services/cloudinary_service.dart';
 import '../services/user_service.dart';
@@ -137,7 +138,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final uid = _authService.currentUser!.uid;
       await _userService.updateUser(uid, {'avatar': attachment.toMap()});
       await _loadUser();
-    } catch (e) {
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to upload avatar: $e')),
@@ -165,7 +167,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SnackBar(content: Text('Profile updated.')),
         );
       }
-    } catch (e) {
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to save: $e')),
@@ -209,7 +212,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SnackBar(content: Text('Password updated successfully.')),
         );
       }
-    } catch (e) {
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to update password: $e')),
@@ -267,6 +271,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
     if (confirmed != true) return;
+    await FirebaseCrashlytics.instance.setUserIdentifier('');
     await _authService.signOut();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
@@ -291,7 +296,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         MaterialPageRoute<void>(builder: (_) => const SplashScreen()),
         (route) => false,
       );
-    } catch (e) {
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to delete account: $e')),

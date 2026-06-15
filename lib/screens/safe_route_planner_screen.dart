@@ -10,6 +10,7 @@ import 'package:latlong2/latlong.dart';
 import '../models/geo_location_model.dart';
 import '../models/safe_route_model.dart';
 import '../services/maps_service.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import '../services/safe_route_service.dart';
 import '../theme/tutela_colors.dart';
 import '../widgets/tutela_bottom_nav.dart';
@@ -212,7 +213,8 @@ class _SafeRoutePlannerScreenState extends State<SafeRoutePlannerScreen> {
       });
       _nameController.clear();
       if (mounted) _showMessage('Route saved!');
-    } catch (_) {
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
       if (mounted) _showMessage('Failed to save route.');
     } finally {
       if (mounted) setState(() => _isSaving = false);

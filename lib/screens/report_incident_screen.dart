@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -80,7 +81,8 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen>
         radiusMeters: 5000,
       );
       setState(() => _nearbyResults = results);
-    } catch (e) {
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
       setState(() => _nearbyError = 'Failed to search nearby places.');
     } finally {
       if (mounted) setState(() => _isSearchingNearby = false);
@@ -952,7 +954,8 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen>
         _attachments.clear();
       });
       _showMessage('Report saved.');
-    } catch (e) {
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
       _showMessage('Failed to save report.');
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -989,7 +992,8 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen>
       try {
         await _incidentService.deleteIncident(id);
         _showMessage('Report removed.');
-      } catch (e) {
+      } catch (e, s) {
+        FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
         _showMessage('Failed to remove report.');
       }
     }

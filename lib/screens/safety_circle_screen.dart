@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/emergency_contact_model.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import '../services/emergency_contact_service.dart';
 import '../theme/tutela_colors.dart';
 import '../widgets/tutela_bottom_nav.dart';
@@ -384,8 +385,8 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
       }
       _clearForm();
       _showMessage('Emergency contact saved.');
-    } catch (_) {
-      // Error Firebase ditangkap agar aplikasi tidak crash.
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
       _showMessage('Failed to save contact.');
     } finally {
       // mounted dicek karena request async mungkin selesai setelah screen tutup.
@@ -467,7 +468,8 @@ class _SafetyCircleScreenState extends State<SafetyCircleScreen> {
       // Bersihkan form jika kontak yang dihapus sedang diedit.
       if (_editingContact?.id == contact.id) _clearForm();
       _showMessage('Emergency contact deleted.');
-    } catch (_) {
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
       _showMessage('Failed to delete contact.');
     }
   }

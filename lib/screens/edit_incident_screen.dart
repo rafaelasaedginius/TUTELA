@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import '../models/geo_location_model.dart';
 import '../models/incident_enums.dart';
 import '../models/incident_model.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import '../services/incident_service.dart';
 import '../services/maps_service.dart';
 import '../theme/tutela_colors.dart';
@@ -104,7 +105,8 @@ class _EditIncidentScreenState extends State<EditIncidentScreen> {
       if (!mounted) return;
       _showMessage('Report updated.');
       Navigator.of(context).pop();
-    } catch (e) {
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
       _showMessage('Failed to update report.');
     } finally {
       if (mounted) setState(() => _isSaving = false);

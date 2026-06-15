@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/geo_location_model.dart';
 import '../models/incident_model.dart';
 import '../models/safe_route_model.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import '../services/emergency_contact_service.dart';
 import '../services/incident_service.dart';
 import '../services/maps_service.dart';
@@ -131,7 +132,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       if (!mounted) return;
       setState(() => _currentLocation = loc);
       _mapController.move(LatLng(loc.latitude, loc.longitude), 15);
-    } catch (e) {
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Could not get location: $e'),
@@ -239,7 +241,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             main.map((p) => LatLng(p.latitude, p.longitude)).toList(),
         padding: const EdgeInsets.fromLTRB(50, 120, 50, 220),
       ));
-    } catch (e) {
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Could not find route: $e')));
