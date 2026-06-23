@@ -23,6 +23,8 @@ void main() async {
 
   await dotenv.load(fileName: '.env');
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Notification harus diinisialisasi setelah Firebase karena listener-nya
+  // membaca Firebase Auth dan Cloud Firestore.
   await NotificationService.initialize();
 
   FlutterNativeSplash.remove();
@@ -45,6 +47,8 @@ class TutelaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      // Global navigator key dipakai saat notification ditekan, karena callback
+      // notification tidak memiliki BuildContext dari sebuah screen.
       navigatorKey: NotificationService.navigatorKey,
       title: 'Tutela',
       debugShowCheckedModeBanner: false,

@@ -1,5 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 
+/// Lapisan penghubung antara UI autentikasi dan Firebase Authentication.
+///
+/// Screen tidak memanggil Firebase secara langsung. Semua operasi login,
+/// register, logout, dan password ditempatkan di service ini agar logic dapat
+/// dipakai ulang dan UI tetap mudah dibaca.
 class AuthService {
   final fb.FirebaseAuth _auth = fb.FirebaseAuth.instance;
 
@@ -34,6 +39,8 @@ class AuthService {
   }
 
   Future<void> sendPasswordReset(String email) async {
+    // Firebase yang membuat token reset dan mengirim email. Aplikasi tidak
+    // pernah mengetahui password lama atau membuat reset link sendiri.
     await _auth.sendPasswordResetEmail(email: email);
   }
 

@@ -1103,6 +1103,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   }
 
   Future<void> _triggerSos(BuildContext context) async {
+    // Logic ini sama dengan SOS pada Home: kontak priority pertama dipakai,
+    // sedangkan 110 menjadi fallback jika kontak belum tersedia.
     final uid = fb.FirebaseAuth.instance.currentUser?.uid;
 
     String? phoneNumber;
@@ -1118,6 +1120,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     phoneNumber ??= '110';
 
     final cleaned = phoneNumber.replaceAll(RegExp(r'\s+'), '');
+    // Scheme tel: dibuka oleh package url_launcher ke aplikasi Phone.
     final uri = Uri(scheme: 'tel', path: cleaned);
 
     if (await canLaunchUrl(uri)) {

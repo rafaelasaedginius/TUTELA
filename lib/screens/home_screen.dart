@@ -349,6 +349,11 @@ class HomeScreen extends StatelessWidget {
   }
 
   Future<void> _triggerSos(BuildContext context) async {
+    // SOS Call Workflow:
+    // 1. Ambil UID user login.
+    // 2. Ambil kontak yang sudah diurutkan berdasarkan priority.
+    // 3. Gunakan kontak priority pertama, atau nomor polisi 110 sebagai fallback.
+    // 4. Buka aplikasi Phone melalui URI dengan scheme tel:.
     final uid = fb.FirebaseAuth.instance.currentUser?.uid;
 
     String? phoneNumber;
@@ -357,6 +362,7 @@ class HomeScreen extends StatelessWidget {
         final contacts =
             await EmergencyContactService().getContacts(uid);
         if (contacts.isNotEmpty) {
+          // getContacts() mengurutkan priority dari angka terkecil.
           phoneNumber = contacts.first.phoneNumber;
         }
       } catch (_) {}
@@ -365,6 +371,8 @@ class HomeScreen extends StatelessWidget {
     phoneNumber ??= '110';
 
     final cleaned = phoneNumber.replaceAll(RegExp(r'\s+'), '');
+    // url_launcher meneruskan URI tel: ke aplikasi Phone bawaan perangkat.
+    // Tutela hanya mengisi nomor; pengguna tetap menekan tombol Call sendiri.
     final uri = Uri(scheme: 'tel', path: cleaned);
 
     if (await canLaunchUrl(uri)) {

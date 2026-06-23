@@ -33,6 +33,8 @@ class NotificationService {
   static String? _pendingIncidentId;
 
   static Future<void> initialize() async {
+    // Channel mengelompokkan notification Android dan menentukan suara,
+    // vibration, warna, serta tingkat kepentingannya.
     await AwesomeNotifications().initialize(null, [
       NotificationChannel(
         channelKey: channelKey,
@@ -51,6 +53,8 @@ class NotificationService {
       onActionReceivedMethod: onActionReceivedMethod,
     );
 
+    // Jika app dibuka lewat notification lama, incidentId disimpan sementara
+    // sampai Navigator pada MaterialApp sudah siap digunakan.
     final initialAction = await AwesomeNotifications()
         .getInitialNotificationAction(removeFromActionEvents: true);
     final initialIncidentId = initialAction?.payload?['incidentId'];
@@ -67,6 +71,8 @@ class NotificationService {
   }
 
   static void _listenToSignedInUser() {
+    // Listener Firestore hanya aktif untuk user yang sedang login. Saat akun
+    // berubah/logout, listener lama dihentikan agar data akun tidak tercampur.
     _authSubscription?.cancel();
     _authSubscription = fb.FirebaseAuth.instance.authStateChanges().listen((
       user,
@@ -94,6 +100,9 @@ class NotificationService {
                     .toSet();
             final previousVerifiedBy = _knownVerifiedBy[incidentId] ?? {};
 
+            // difference() menghasilkan UID yang baru masuk ke verifiedBy.
+            // Snapshot pertama diabaikan agar verification lama tidak dianggap
+            // sebagai notification baru ketika aplikasi baru dibuka.
             if (_incidentSnapshotReady &&
                 change.type == DocumentChangeType.modified) {
               final newVerifierIds = currentVerifiedBy.difference(
@@ -134,6 +143,8 @@ class NotificationService {
               final authorId = data['authorId'] as String? ?? '';
 
               if (!_ownedIncidentIds.contains(incidentId) || authorId == uid) {
+                // Hanya komentar orang lain pada incident milik user yang
+                // menghasilkan notification.
                 continue;
               }
 
@@ -166,6 +177,8 @@ class NotificationService {
     required String body,
     required String incidentId,
   }) async {
+    // Awesome Notifications membuat local notification di perangkat. Payload
+    // menyimpan incidentId agar notification dapat membuka detail yang benar.
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: DateTime.now().millisecondsSinceEpoch.abs() % 2147483647,
@@ -192,6 +205,7 @@ class NotificationService {
       return;
     }
 
+    // Ambil data incident terbaru dari Firestore sebelum membuka detail.
     final incident = await IncidentService().getIncident(incidentId);
     if (incident == null) return;
 

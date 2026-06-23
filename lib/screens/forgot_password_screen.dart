@@ -36,6 +36,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Future<void> _sendResetLink() async {
+    // Alur: ambil email -> validasi lokal -> panggil Firebase Auth -> tampilkan
+    // success state. Method ini dipanggil oleh tombol dan keyboard submit.
     final email = _emailController.text.trim();
 
     // Forgot Password Validation Start
@@ -51,7 +53,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     setState(() => _isSending = true);
     try {
-      // Firebase sends the password reset link to the supplied email.
+      // AuthService meneruskan email ke sendPasswordResetEmail milik Firebase.
       await _authService.sendPasswordReset(email);
       if (!mounted) return;
       setState(() => _emailSent = true);
@@ -66,6 +68,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   String _firebaseErrorMessage(fb.FirebaseAuthException error) {
+    // Firebase memberi error dalam bentuk code. Code dipetakan menjadi pesan
+    // yang lebih mudah dimengerti pengguna.
     switch (error.code) {
       case 'invalid-email':
         return 'Please enter a valid email address.';
